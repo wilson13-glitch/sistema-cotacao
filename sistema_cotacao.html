@@ -1,0 +1,2632 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Cotação</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f2eb;
+  --surface: #ede9e0;
+  --card: #ffffff;
+  --border: #d8d2c4;
+  --border2: #c8c0b0;
+  --text: #1a1714;
+  --muted: #7a7268;
+  --accent: #c8401a;
+  --accent2: #2a5c3f;
+  --yellow: #e8a020;
+  --blue: #1a3a6c;
+  --radius: 8px;
+  --mono: 'IBM Plex Mono', monospace;
+  --serif: 'Instrument Serif', serif;
+  --sans: 'Geist', sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* Noise texture overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.6;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--text);
+  color: var(--bg);
+  padding: 0 32px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-mark {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.header-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: rgba(245,242,235,0.5);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.15s;
+}
+
+.nav-tab:hover { color: var(--bg); background: rgba(255,255,255,0.08); }
+.nav-tab.active { background: var(--accent); color: #fff; }
+
+/* ── LAYOUT ── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: calc(100vh - 52px);
+}
+
+/* ── LEFT PANEL ── */
+.left-panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: calc(100vh - 52px);
+  position: sticky;
+  top: 52px;
+}
+
+.panel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+}
+
+.panel-section:last-child { border-bottom: none; }
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Company selector */
+.company-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.company-opt {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.company-opt:hover { border-color: var(--accent); }
+
+.company-opt.active {
+  border-color: var(--accent);
+  background: #fff8f6;
+}
+
+.company-opt .co-name {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 2px;
+}
+
+.company-opt.active .co-name { color: var(--accent); }
+
+.company-opt .co-cnpj {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* Buyer field */
+.field { margin-bottom: 10px; }
+.field:last-child { margin-bottom: 0; }
+
+label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+input, textarea, select {
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(200,64,26,0.08);
+}
+
+select option { background: #fff; }
+
+.input-row { display: grid; gap: 8px; }
+.cols-2 { grid-template-columns: 1fr 1fr; }
+
+/* Items */
+.items-list { display: flex; flex-direction: column; gap: 5px; }
+
+.item-row {
+  display: grid;
+  grid-template-columns: 1fr 52px 60px 22px;
+  gap: 5px;
+  align-items: center;
+}
+
+.item-row input { padding: 6px 8px; font-size: 12px; }
+
+.del-btn {
+  width: 22px; height: 22px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+
+.del-btn:hover { background: #fdecea; border-color: #e07070; color: var(--accent); }
+
+.add-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border2);
+  border-radius: 5px;
+  padding: 7px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: 6px;
+}
+
+.add-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,64,26,0.03); }
+
+/* Suppliers */
+.supplier-list { display: flex; flex-direction: column; gap: 6px; }
+
+.supplier-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+  position: relative;
+  user-select: none;
+}
+
+.supplier-card:hover { border-color: var(--border2); }
+.supplier-card.selected { border-color: var(--accent2); background: #f0f7f3; }
+
+.supplier-card .s-name { font-weight: 600; font-size: 12px; margin-bottom: 3px; }
+.supplier-card.selected .s-name { color: var(--accent2); }
+.supplier-card .s-email { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-bottom: 5px; }
+
+.s-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+
+.tag {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.tag.match { background: #e8f4ee; border-color: #a8d4b8; color: var(--accent2); }
+
+.s-check {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 16px; height: 16px;
+  background: var(--accent2);
+  border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+}
+
+.supplier-card.selected .s-check { display: flex; }
+
+.s-check svg { width: 9px; height: 9px; }
+
+.no-suppliers {
+  text-align: center;
+  padding: 16px;
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Filter tags */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.filter-tag {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.filter-tag:hover { border-color: var(--accent2); color: var(--accent2); }
+.filter-tag.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+
+/* ── RIGHT PANEL ── */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: calc(100vh - 52px);
+}
+
+.right-header {
+  padding: 20px 32px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.right-title {
+  font-family: var(--serif);
+  font-size: 28px;
+  line-height: 1.2;
+  color: var(--text);
+  font-style: italic;
+}
+
+.right-title span { color: var(--accent); font-style: normal; }
+
+.action-bar {
+  display: flex;
+  gap: 8px;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.selected-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-right: 4px;
+}
+
+.selected-count strong { color: var(--accent2); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover { background: #b03415; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(200,64,26,0.3); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-green {
+  background: var(--accent2);
+  color: #fff;
+}
+
+.btn-green:hover { background: #1e4a30; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(42,92,63,0.3); }
+.btn-green:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+
+.btn-outline:hover { border-color: var(--text); background: rgba(0,0,0,0.03); }
+
+/* Preview */
+.preview-wrapper {
+  flex: 1;
+  padding: 24px 32px 40px;
+}
+
+.preview-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent2);
+}
+
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--accent2);
+  border-radius: 50%;
+  animation: blink 1.8s ease-in-out infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* The actual email preview */
+.email-preview {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.email-chrome {
+  background: #f0ede8;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.chrome-dot { width: 10px; height: 10px; border-radius: 50%; }
+.chrome-dot:nth-child(1) { background: #ff5f57; }
+.chrome-dot:nth-child(2) { background: #febc2e; }
+.chrome-dot:nth-child(3) { background: #28c840; }
+
+.email-chrome-info {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.email-body {
+  padding: 32px 40px;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #1a1714;
+}
+
+.email-body .greeting { font-weight: 700; margin-bottom: 12px; }
+
+.email-body .intro { margin-bottom: 16px; }
+
+.email-body ul { margin: 8px 0 16px 24px; }
+.email-body ul li { margin-bottom: 3px; }
+
+.email-body .section-heading {
+  font-weight: 700;
+  margin: 20px 0 10px;
+  font-size: 13px;
+}
+
+.email-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 20px;
+  font-size: 13px;
+}
+
+.email-body table th {
+  background: #bfbfbf;
+  border: 1px solid #000;
+  padding: 6px 10px;
+  font-weight: 700;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+}
+
+.email-body table td {
+  border: 1px solid #000;
+  padding: 5px 10px;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+}
+
+.email-body table td:first-child,
+.email-body table td:nth-child(3),
+.email-body table td:nth-child(4) { text-align: center; }
+
+.email-body .conditions { margin-bottom: 16px; }
+
+.email-body .cond-item { margin-bottom: 6px; padding-left: 20px; position: relative; }
+.email-body .cond-item::before { content: '·'; position: absolute; left: 6px; }
+
+.deadline-highlight {
+  background: #fff9e6;
+  border: 1px solid #e8c060;
+  border-radius: 4px;
+  padding: 8px 14px;
+  margin: 16px 0;
+  display: inline-block;
+}
+
+.deadline-text { color: #c87010; font-weight: 700; }
+
+.email-body .signature { margin-top: 24px; border-top: 1px solid #e0dcd4; padding-top: 16px; }
+.email-body .sig-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.email-body .sig-role { color: #555; margin-bottom: 2px; }
+.email-body .sig-email { color: #1155CC; text-decoration: underline; margin-bottom: 8px; }
+.email-body .sig-address { color: #555; font-size: 12px; line-height: 1.6; }
+.email-body .sig-disclaimer {
+  margin-top: 20px;
+  font-size: 10px;
+  color: #888;
+  line-height: 1.5;
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+
+/* Recipients preview */
+.recipients-bar {
+  padding: 12px 32px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.recipients-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.recipient-chip {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text);
+  display: flex; align-items: center; gap: 5px;
+}
+
+.recipient-chip .r-dot { width: 5px; height: 5px; background: var(--accent2); border-radius: 50%; }
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* Suppliers Page */
+.suppliers-page {
+  padding: 24px 32px 40px;
+}
+
+.page-title {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.suppliers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.supplier-full-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  transition: box-shadow 0.15s;
+}
+
+.supplier-full-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
+.sfcard-name { font-weight: 700; font-size: 14px; margin-bottom: 2px; }
+.sfcard-email { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.sfcard-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.sfcard-actions { display: flex; gap: 6px; }
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 10px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: all 0.12s;
+}
+
+.btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm.danger:hover { border-color: var(--accent); color: var(--accent); background: #fdecea; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(26,23,20,0.6);
+  backdrop-filter: blur(3px);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 440px;
+  max-width: 95vw;
+  padding: 28px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  animation: modalIn 0.2s ease;
+}
+
+@keyframes modalIn {
+  from { opacity:0; transform:translateY(12px) scale(0.97); }
+  to { opacity:1; transform:none; }
+}
+
+.modal-title {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.modal-footer { display: flex; gap: 8px; margin-top: 20px; }
+
+.btn-cancel {
+  flex: 1;
+  padding: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  color: var(--muted);
+  transition: border-color 0.15s;
+}
+
+.btn-cancel:hover { border-color: var(--border2); }
+
+.btn-save {
+  flex: 2;
+  padding: 9px;
+  background: var(--text);
+  border: none;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  color: var(--bg);
+  transition: background 0.15s;
+}
+
+.btn-save:hover { background: var(--accent); }
+
+/* Category picker */
+.cat-picker {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.cat-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.cat-picker-search svg { flex-shrink: 0; color: var(--muted); }
+
+.cat-search-input {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  box-shadow: none !important;
+  height: auto !important;
+  min-height: auto !important;
+}
+
+.cat-search-input:focus { box-shadow: none !important; border: none !important; }
+
+.cat-list {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cat-list::-webkit-scrollbar { width: 4px; }
+.cat-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.cat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+
+.cat-item:hover { background: var(--surface); }
+.cat-item.selected { background: #f0f7f3; }
+
+.cat-checkbox {
+  width: 15px; height: 15px;
+  border: 1.5px solid var(--border2);
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+  background: var(--card);
+}
+
+.cat-item.selected .cat-checkbox {
+  background: var(--accent2);
+  border-color: var(--accent2);
+}
+
+.cat-checkbox svg { display: none; }
+.cat-item.selected .cat-checkbox svg { display: block; }
+
+.cat-item-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+
+.cat-item.selected .cat-item-label { color: var(--accent2); }
+
+.cat-new-row {
+  border-top: 1px solid var(--border);
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cat-new-input {
+  flex: 1;
+  border: none !important;
+  background: transparent !important;
+  padding: 4px 0 !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  box-shadow: none !important;
+}
+
+.cat-new-input:focus { box-shadow: none !important; border: none !important; }
+
+.cat-add-btn {
+  background: var(--accent2);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.cat-add-btn:hover { background: #1e4a30; }
+
+.cat-selected-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 6px;
+  min-height: 22px;
+}
+
+.tag-pill {
+  background: #e8f4ee;
+  border: 1px solid #a8d4b8;
+  border-radius: 3px;
+  padding: 2px 6px 2px 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--accent2);
+  display: inline-flex; align-items: center; gap: 4px;
+}
+
+.tag-pill button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--accent2);
+  font-size: 12px;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.6;
+  transition: opacity 0.1s;
+}
+
+.tag-pill button:hover { opacity: 1; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 6px;
+  padding: 12px 18px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  transform: translateY(20px);
+  opacity: 0;
+  transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 9998;
+  max-width: 320px;
+}
+
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.empty-state .empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+.empty-state p { font-size: 13px; }
+
+/* ── PRICES PAGE ── */
+.prices-page {
+  padding: 24px 32px 60px;
+  max-width: 1200px;
+}
+
+.prices-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.prices-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-family: var(--serif);
+  font-size: 22px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.stat-best { border-left: 3px solid var(--accent2); }
+.stat-avg  { border-left: 3px solid var(--yellow); }
+.stat-last { border-left: 3px solid var(--blue); }
+.stat-count{ border-left: 3px solid var(--accent); }
+
+.prices-filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.prices-table-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.prices-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.prices-table thead tr {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.prices-table th {
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.prices-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.prices-table tbody tr:last-child td { border-bottom: none; }
+
+.prices-table tbody tr:hover { background: #faf9f7; }
+
+.price-item-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text);
+  max-width: 220px;
+}
+
+.price-supplier {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.price-unit-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent2);
+}
+
+.price-total-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.price-date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.price-sdc {
+  font-family: var(--mono);
+  font-size: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  color: var(--muted);
+}
+
+.badge-best {
+  display: inline-block;
+  background: #e8f4ee;
+  border: 1px solid #a8d4b8;
+  color: var(--accent2);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  letter-spacing: 0.3px;
+}
+
+.badge-last {
+  display: inline-block;
+  background: #e8eef8;
+  border: 1px solid #a8b8d8;
+  color: var(--blue);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  letter-spacing: 0.3px;
+}
+
+/* Price hint shown in Composer item rows */
+.price-hint {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent2);
+  padding: 2px 5px;
+  background: #e8f4ee;
+  border: 1px solid #a8d4b8;
+  border-radius: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.price-hint:hover { background: #d0eadb; }
+
+.gsheets-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--accent2);
+  padding: 4px 8px;
+  background: #e8f4ee;
+  border: 1px solid #a8d4b8;
+  border-radius: 4px;
+}
+
+.badge-cif {
+  display: inline-block;
+  background: #e8f4ee; border: 1px solid #a8d4b8; color: var(--accent2);
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  border-radius: 3px; padding: 1px 6px; letter-spacing: 0.3px;
+}
+.badge-fob {
+  display: inline-block;
+  background: #e8eef8; border: 1px solid #a8b8d8; color: var(--blue);
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  border-radius: 3px; padding: 1px 6px; letter-spacing: 0.3px;
+}
+.badge-mininco {
+  display: inline-block;
+  background: #fff0eb; border: 1px solid #f0b8a0; color: var(--accent);
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  border-radius: 3px; padding: 1px 6px; letter-spacing: 0.3px;
+}
+.badge-hdpe {
+  display: inline-block;
+  background: #f0f0ff; border: 1px solid #b0b0e0; color: #3a3a9a;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  border-radius: 3px; padding: 1px 6px; letter-spacing: 0.3px;
+}
+textarea { resize: vertical; min-height: 60px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">SC</div>
+    Sistema de Cotação
+  </div>
+  <nav class="header-nav">
+    <button class="nav-tab active" onclick="showPage('composer')">Composer</button>
+    <button class="nav-tab" onclick="showPage('suppliers')">Fornecedores</button>
+    <button class="nav-tab" onclick="showPage('prices')">Preços</button>
+  </nav>
+</header>
+
+<!-- ═══════════════ COMPOSER PAGE ═══════════════ -->
+<div id="page-composer" class="page active">
+<div class="app-layout">
+
+  <!-- LEFT PANEL -->
+  <aside class="left-panel">
+
+    <!-- Empresa -->
+    <div class="panel-section">
+      <div class="section-label">Empresa</div>
+      <div class="company-toggle">
+        <div class="company-opt active" id="co-mininco" onclick="selectCompany('mininco')">
+          <div class="co-name">MININCO</div>
+          <div class="co-cnpj">61.748.475/0001-55</div>
+        </div>
+        <div class="company-opt" id="co-hdpe" onclick="selectCompany('hdpe')">
+          <div class="co-name">HDPE</div>
+          <div class="co-cnpj">64.155.399/0001-62</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comprador -->
+    <div class="panel-section">
+      <div class="section-label">Responsável pela Compra</div>
+      <div class="field">
+        <label>Nome</label>
+        <input type="text" id="buyerName" placeholder="Nome do comprador" oninput="renderPreview()">
+      </div>
+      <div class="field">
+        <label>Cargo</label>
+        <input type="text" id="buyerRole" placeholder="Ex: Suprimentos | Compradora" oninput="renderPreview()">
+      </div>
+      <div class="field">
+        <label>E-mail</label>
+        <input type="email" id="buyerEmail" placeholder="email@empresa.com" oninput="renderPreview()">
+      </div>
+      <div class="field">
+        <label>Telefone (opcional)</label>
+        <input type="text" id="buyerPhone" placeholder="+55 (00) 9 99999-9999" oninput="renderPreview()">
+      </div>
+    </div>
+
+    <!-- SDC + Prazo -->
+    <div class="panel-section">
+      <div class="section-label">Solicitação</div>
+      <div class="field">
+        <label>Número SDC</label>
+        <input type="text" id="sdcNum" placeholder="SDC-2026-001" oninput="renderPreview()">
+      </div>
+      <div class="field">
+        <label>Prazo Limite</label>
+        <input type="datetime-local" id="deadline" oninput="renderPreview()">
+      </div>
+    </div>
+
+    <!-- Itens -->
+    <div class="panel-section">
+      <div class="section-label">Itens</div>
+      <div style="display:grid;grid-template-columns:1fr 48px 56px auto 22px;gap:4px;margin-bottom:5px;padding:0 2px;">
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);">Descrição</span>
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);text-align:center;">UN</span>
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);text-align:center;">Qtd</span>
+        <span style="font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--accent2);">Ref. R$</span>
+        <span></span>
+      </div>
+      <div class="items-list" id="itemsList"></div>
+      <button class="add-btn" onclick="addItem()">+ Adicionar Item</button>
+    </div>
+
+    <!-- Condições -->
+    <div class="panel-section">
+      <div class="section-label">Condições</div>
+      <div class="field">
+        <label>Pagamento</label>
+        <input type="text" id="payment" value="À Negociar" oninput="renderPreview()">
+      </div>
+      <div class="field">
+        <label>Tipo de Operação</label>
+        <input type="text" id="opType" value="Aquisição para Revenda" oninput="renderPreview()">
+      </div>
+    </div>
+
+    <!-- Fornecedores -->
+    <div class="panel-section">
+      <div class="section-label">Fornecedores</div>
+      <div class="filter-bar" id="filterBar"></div>
+      <div class="supplier-list" id="supplierListLeft"></div>
+    </div>
+
+  </aside>
+
+  <!-- RIGHT PANEL -->
+  <main class="right-panel">
+
+    <div class="right-header">
+      <div>
+        <div class="right-title">Pré-visualização do <span>E-mail</span></div>
+      </div>
+    </div>
+
+    <div class="action-bar">
+      <span class="selected-count" id="selectedCount">Nenhum fornecedor selecionado</span>
+      <button class="btn btn-primary" id="btnSendAll" onclick="sendAll()" disabled>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Enviar para Selecionados
+      </button>
+      <button class="btn btn-outline" onclick="copyEmail()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+        Copiar Texto
+      </button>
+    </div>
+
+    <div class="preview-wrapper">
+      <div class="preview-label">
+        Visualização em tempo real
+        <div class="live-indicator"><div class="live-dot"></div><span style="font-size:9px;">LIVE</span></div>
+      </div>
+
+      <div class="email-preview">
+        <div class="email-chrome">
+          <div class="chrome-dot"></div>
+          <div class="chrome-dot"></div>
+          <div class="chrome-dot"></div>
+          <div class="email-chrome-info" id="emailSubjectBar">Assunto: —</div>
+        </div>
+        <div class="email-body" id="emailBody">
+          <div style="text-align:center;padding:40px;color:#aaa;font-size:13px;font-family:Arial;">
+            Preencha os campos ao lado para visualizar o e-mail
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="recipients-bar" id="recipientsBar" style="display:none;">
+      <span class="recipients-label">Para:</span>
+      <div id="recipientChips"></div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- ═══════════════ SUPPLIERS PAGE ═══════════════ -->
+<div id="page-suppliers" class="page">
+  <div class="suppliers-page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+      <div class="page-title">Cadastro de Fornecedores</div>
+      <button class="btn btn-primary" onclick="openSupplierModal()">+ Novo Fornecedor</button>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Gerencie fornecedores e suas categorias de produtos. As categorias serão usadas para filtrar automaticamente no Composer.</p>
+    <div class="suppliers-grid" id="suppliersGrid"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ PRICES PAGE ═══════════════ -->
+<div id="page-prices" class="page">
+  <div class="prices-page">
+
+    <!-- Top bar -->
+    <div class="prices-topbar">
+      <div>
+        <div class="page-title">Histórico de Preços</div>
+        <div id="gsheetsStatusBar" style="display:none;margin-top:4px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-outline" id="btnGSheets" onclick="openGSheetsModal()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          <span id="gsheetsBtnLabel">Conectar Google Sheets</span>
+        </button>
+        <button class="btn btn-outline" id="btnSync" onclick="syncGSheets()" style="display:none;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Sincronizar
+        </button>
+        <button class="btn btn-green" onclick="openAddPriceModal()">
+          + Registrar Preço
+        </button>
+        <button class="btn btn-outline" onclick="exportPricesCSV()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="prices-stats" id="pricesStats"></div>
+
+    <!-- Filters -->
+    <div class="prices-filters">
+      <div style="position:relative;flex:1;max-width:260px;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="priceSearch" placeholder="Buscar item ou fornecedor..." style="padding-left:30px;" oninput="renderPricesTable()">
+      </div>
+      <select id="priceSupplierFilter" onchange="renderPricesTable()" style="max-width:190px;">
+        <option value="">Todos fornecedores</option>
+      </select>
+      <select id="priceUnitFilter" onchange="renderPricesTable()" style="max-width:160px;">
+        <option value="">MININCO + HDPE</option>
+        <option value="MININCO">Somente MININCO</option>
+        <option value="HDPE">Somente HDPE</option>
+      </select>
+      <select id="priceFreteFilter" onchange="renderPricesTable()" style="max-width:130px;">
+        <option value="">CIF + FOB</option>
+        <option value="CIF">Somente CIF</option>
+        <option value="FOB">Somente FOB</option>
+      </select>
+      <select id="priceSortFilter" onchange="renderPricesTable()" style="max-width:170px;">
+        <option value="date_desc">Mais recente primeiro</option>
+        <option value="date_asc">Mais antigo primeiro</option>
+        <option value="price_asc">Menor preço</option>
+        <option value="price_desc">Maior preço</option>
+        <option value="item_asc">Item A→Z</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <div class="prices-table-wrap">
+      <table class="prices-table" id="pricesTable">
+        <thead>
+          <tr>
+            <th>Item / Descrição</th>
+            <th>UN</th>
+            <th>Fornecedor</th>
+            <th>Unid. Destino</th>
+            <th>Preço Unit.</th>
+            <th>Preço Total</th>
+            <th>Frete</th>
+            <th>Impostos</th>
+            <th>Prazo</th>
+            <th>Data</th>
+            <th>SDC</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pricesTableBody"></tbody>
+      </table>
+      <div id="pricesEmpty" style="display:none;" class="empty-state">
+        <div class="empty-icon">📊</div>
+        <p>Nenhum preço registrado ainda.<br>Conecte o Google Sheets ou clique em "Registrar Preço".</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL ═══════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Novo Fornecedor</div>
+    <div class="input-row cols-2" style="margin-bottom:10px;">
+      <div class="field">
+        <label>Nome / Empresa</label>
+        <input type="text" id="mName" placeholder="Nome do fornecedor">
+      </div>
+      <div class="field">
+        <label>Contato</label>
+        <input type="text" id="mContact" placeholder="Nome do contato">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>E-mail</label>
+      <input type="email" id="mEmail" placeholder="email@fornecedor.com">
+    </div>
+    <div class="field" style="margin-bottom:10px;">
+      <label>Telefone (opcional)</label>
+      <input type="text" id="mPhone" placeholder="+55 (00) 9 99999-9999">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Categorias / Produtos</label>
+      <div class="cat-picker">
+        <div class="cat-picker-search">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="cat-search-input" id="catSearch" placeholder="Filtrar categorias..." oninput="renderCatList()">
+        </div>
+        <div class="cat-list" id="catList"></div>
+        <div class="cat-new-row">
+          <input type="text" class="cat-new-input" id="catNewInput" placeholder="Criar nova categoria..." onkeydown="if(event.key==='Enter'){event.preventDefault();addNewCat();}">
+          <button class="cat-add-btn" onclick="addNewCat()">+ Criar</button>
+        </div>
+      </div>
+      <div class="cat-selected-preview" id="catSelectedPreview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveSupplier()">Salvar Fornecedor</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ADD PRICE MODAL ═══════════════ -->
+<div class="modal-overlay" id="priceModalOverlay">
+  <div class="modal" style="width:560px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-title" id="priceModalTitle">Registrar Preço Recebido</div>
+    <input type="hidden" id="priceEditId">
+
+    <div class="input-row cols-2" style="margin-bottom:10px;">
+      <div class="field">
+        <label>Item / Descrição</label>
+        <input type="text" id="pmDesc" placeholder="Ex: TUBO PEAD DRENAGEM 200MM" list="descDatalist">
+        <datalist id="descDatalist"></datalist>
+      </div>
+      <div class="field">
+        <label>Unidade (UN)</label>
+        <input type="text" id="pmUN" placeholder="M, PC, KG..." style="text-transform:uppercase;">
+      </div>
+    </div>
+
+    <div class="input-row cols-2" style="margin-bottom:10px;">
+      <div class="field">
+        <label>Fornecedor</label>
+        <input type="text" id="pmSupplier" placeholder="Nome do fornecedor" list="supplierDatalist">
+        <datalist id="supplierDatalist"></datalist>
+      </div>
+      <div class="field">
+        <label>Unidade de Destino</label>
+        <select id="pmDestUnit">
+          <option value="">Ambas</option>
+          <option value="MININCO">MININCO — Belo Horizonte/MG</option>
+          <option value="HDPE">HDPE — Osasco/SP</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="input-row cols-2" style="margin-bottom:10px;">
+      <div class="field">
+        <label>Quantidade Cotada</label>
+        <input type="text" id="pmQty" placeholder="0,00" oninput="calcPriceTotal()">
+      </div>
+      <div class="field">
+        <label>Prazo de Entrega</label>
+        <input type="text" id="pmDelivery" placeholder="Ex: 5 dias úteis">
+      </div>
+    </div>
+
+    <div class="input-row cols-2" style="margin-bottom:10px;">
+      <div class="field">
+        <label>Preço Unitário (R$)</label>
+        <input type="text" id="pmUnit" placeholder="0,00" oninput="calcPriceTotal()">
+      </div>
+      <div class="field">
+        <label>Preço Total (R$)</label>
+        <input type="text" id="pmTotal" placeholder="Calculado automaticamente" readonly style="background:var(--surface);color:var(--muted);">
+      </div>
+    </div>
+
+    <!-- Frete + Impostos highlight row -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin-bottom:10px;">
+      <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Condições Logísticas e Fiscais</div>
+      <div class="input-row cols-2" style="margin-bottom:10px;">
+        <div class="field">
+          <label>Tipo de Frete</label>
+          <select id="pmFrete">
+            <option value="">Não informado</option>
+            <option value="CIF">CIF — Frete por conta do fornecedor</option>
+            <option value="FOB">FOB — Frete por conta do comprador</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Valor do Frete (R$)</label>
+          <input type="text" id="pmFreteVal" placeholder="0,00 ou incluso">
+        </div>
+      </div>
+      <div class="input-row cols-2" style="margin-bottom:0;">
+        <div class="field">
+          <label>Impostos inclusos?</label>
+          <select id="pmImpostos">
+            <option value="">Não informado</option>
+            <option value="Com impostos">Sim — Preço com impostos</option>
+            <option value="Sem impostos">Não — Preço sem impostos</option>
+            <option value="Isento">Isento</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Observação fiscal</label>
+          <input type="text" id="pmImpostosObs" placeholder="Ex: ICMS 12%, ST incluso...">
+        </div>
+      </div>
+    </div>
+
+    <div class="input-row cols-2" style="margin-bottom:0;">
+      <div class="field">
+        <label>Data da Proposta</label>
+        <input type="date" id="pmDate">
+      </div>
+      <div class="field">
+        <label>SDC Referência</label>
+        <input type="text" id="pmSDC" placeholder="SDC-2026-001">
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closePriceModal()">Cancelar</button>
+      <button class="btn-save" onclick="savePrice()">Salvar Registro</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ GSHEETS MODAL ═══════════════ -->
+<div class="modal-overlay" id="gsheetsModalOverlay">
+  <div class="modal" style="width:500px;">
+    <div class="modal-title">Conectar Google Sheets</div>
+
+    <div style="background:#f0f7f3;border:1px solid #a8d4b8;border-radius:6px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--accent2);line-height:1.8;">
+      <strong>Como configurar sua planilha:</strong><br>
+      Crie uma aba com estas colunas (nomes flexíveis):<br>
+      <code style="background:rgba(0,0,0,0.06);padding:2px 5px;border-radius:3px;font-size:10px;display:inline-block;margin-top:4px;">Item | UN | Fornecedor | Destino | Qtd | Preço Unit. | Preço Total | Frete | Valor Frete | Impostos | Obs. Fiscal | Prazo | Data | SDC</code><br><br>
+      Depois: <strong>Arquivo → Compartilhar → Publicar na web → selecione a aba → CSV</strong>
+    </div>
+
+    <div class="field" style="margin-bottom:10px;">
+      <label>URL pública da planilha (CSV)</label>
+      <input type="url" id="gsheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Atualização automática</label>
+      <select id="gsheetsInterval">
+        <option value="0">Somente manual (botão Sincronizar)</option>
+        <option value="60">A cada 1 minuto</option>
+        <option value="300" selected>A cada 5 minutos</option>
+        <option value="1800">A cada 30 minutos</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeGSheetsModal()">Cancelar</button>
+      <button class="btn-save" onclick="connectGSheets()">Conectar e Sincronizar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let state = {
+  company: 'mininco',
+  items: [],
+  selectedSuppliers: new Set(),
+  editingId: null,
+  currentTags: [],
+  filterTag: null,
+};
+
+const COMPANIES = {
+  mininco: {
+    nome: 'MININCO DO BRASIL LTDA',
+    fantasia: 'MININCO',
+    cnpj: '61.748.475/0001-55',
+    ie: '52498490060',
+    endereco: 'Rua Antonio Marzinetti, 392, Ouro Preto',
+    cidade: 'Belo Horizonte/MG',
+    cep: '31.320-370',
+  },
+  hdpe: {
+    nome: 'HDPE BRAZIL',
+    fantasia: 'HDPE do Brasil',
+    cnpj: '64.155.399/0001-62',
+    ie: '157253947119',
+    endereco: 'Rua Agenor Domingues de Siqueira, 26, KM 18',
+    cidade: 'Osasco/SP',
+    cep: '06190-090',
+  }
+};
+
+let suppliers = loadSuppliers();
+
+function loadSuppliers() {
+  try {
+    const s = sessionStorage.getItem('sc_suppliers');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return [
+    { id: 's1', name: 'TuboFlex Distribuidora', contact: 'Carlos Melo', email: 'vendas@tuboflex.com.br', phone: '', tags: ['PEAD', 'Drenagem', 'Tubos'] },
+    { id: 's2', name: 'Plasticon Brasil', contact: 'Ana Souza', email: 'cotacoes@plasticon.com.br', phone: '', tags: ['PEAD', 'Conexões', 'Esgoto'] },
+    { id: 's3', name: 'MetalFix Soluções', contact: 'João Ferreira', email: 'joao@metalfix.ind.br', phone: '', tags: ['Abraçadeiras', 'Metálico', 'Fixação'] },
+    { id: 's4', name: 'HydroConect Ltda', contact: 'Patrícia Lima', email: 'orcamentos@hydroconect.com', phone: '', tags: ['PEAD', 'Conexões', 'Luvas', 'Joelhos'] },
+    { id: 's5', name: 'Infra Suprimentos', contact: 'Roberto Alves', email: 'compras@infrasuprimentos.com.br', phone: '', tags: ['Drenagem', 'Construção Civil', 'Saneamento'] },
+  ];
+}
+
+function saveSuppliers() {
+  try { sessionStorage.setItem('sc_suppliers', JSON.stringify(suppliers)); } catch(e) {}
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+window.onload = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(15, 0, 0, 0);
+  document.getElementById('deadline').value = d.toISOString().slice(0,16);
+
+  addItem('TUBO PEAD DRENAGEM 200MM', 'M', '60,00');
+  addItem('JOELHO 45° 200mm, ESGOTO PEAD', 'PC', '14,00');
+  addItem('JUNÇÃO SIMPLES 200x150mm, ESGOTO PEAD', 'PC', '6,00');
+  addItem('LUVA DE CORRER 200mm, ESGOTO PEAD', 'PC', '12,00');
+  addItem('LUVA SIMPLES 200mm, ESGOTO PEAD', 'PC', '10,00');
+  addItem('ABRAÇADEIRAS METÁLICAS TIPO U P/ TUBO DRENAGEM 200mm', 'PC', '33,00');
+
+  renderSupplierList();
+  renderFilterBar();
+  renderSuppliersGrid();
+  renderPreview();
+};
+
+// ── PAGES ────────────────────────────────────────────────────────────────
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`[onclick="showPage('${page}')"]`).classList.add('active');
+  if (page === 'suppliers') renderSuppliersGrid();
+  if (page === 'prices') renderPricesPage();
+}
+
+// ── COMPANY ──────────────────────────────────────────────────────────────
+function selectCompany(id) {
+  state.company = id;
+  document.querySelectorAll('.company-opt').forEach(el => el.classList.remove('active'));
+  document.getElementById('co-' + id).classList.add('active');
+  renderPreview();
+}
+
+// ── ITEMS ─────────────────────────────────────────────────────────────────
+function addItem(desc = '', un = 'PC', qt = '') {
+  state.items.push({ id: Date.now() + Math.random(), desc, un, qt });
+  renderItems();
+  renderPreview();
+}
+
+function removeItem(id) {
+  state.items = state.items.filter(i => i.id !== id);
+  renderItems();
+  renderPreview();
+}
+
+function renderItems() {
+  renderItemsWithPriceHints();
+}
+
+function updateItem(id, field, value) {
+  const item = state.items.find(i => i.id == id);
+  if (item) { item[field] = value; renderPreview(); }
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── SUPPLIERS LEFT LIST ───────────────────────────────────────────────────
+function renderFilterBar() {
+  const allTags = [...new Set(suppliers.flatMap(s => s.tags))].sort();
+  const bar = document.getElementById('filterBar');
+  if (!allTags.length) { bar.innerHTML = ''; return; }
+  bar.innerHTML = allTags.map(t => `
+    <span class="filter-tag ${state.filterTag === t ? 'active' : ''}" onclick="setFilter('${esc(t)}')">${t}</span>
+  `).join('');
+}
+
+function setFilter(tag) {
+  state.filterTag = state.filterTag === tag ? null : tag;
+  renderFilterBar();
+  renderSupplierList();
+}
+
+function renderSupplierList() {
+  const list = document.getElementById('supplierListLeft');
+  let filtered = suppliers;
+  if (state.filterTag) filtered = suppliers.filter(s => s.tags.includes(state.filterTag));
+
+  if (!filtered.length) {
+    list.innerHTML = '<div class="no-suppliers">Nenhum fornecedor encontrado</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(s => `
+    <div class="supplier-card ${state.selectedSuppliers.has(s.id) ? 'selected' : ''}" onclick="toggleSupplier('${s.id}')">
+      <div class="s-check">
+        <svg viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1.5,6 4.5,9 10.5,3"/>
+        </svg>
+      </div>
+      <div class="s-name">${esc(s.name)}</div>
+      <div class="s-email">${esc(s.email)}</div>
+      <div class="s-tags">
+        ${s.tags.map(t => `<span class="tag ${state.filterTag === t ? 'match' : ''}">${t}</span>`).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleSupplier(id) {
+  if (state.selectedSuppliers.has(id)) state.selectedSuppliers.delete(id);
+  else state.selectedSuppliers.add(id);
+  renderSupplierList();
+  updateSelectedCount();
+  renderRecipients();
+}
+
+function updateSelectedCount() {
+  const n = state.selectedSuppliers.size;
+  const el = document.getElementById('selectedCount');
+  const btn = document.getElementById('btnSendAll');
+  if (n === 0) {
+    el.innerHTML = 'Nenhum fornecedor selecionado';
+    btn.disabled = true;
+  } else {
+    el.innerHTML = `<strong>${n}</strong> fornecedor${n>1?'es':''} selecionado${n>1?'s':''}`;
+    btn.disabled = false;
+  }
+}
+
+function renderRecipients() {
+  const bar = document.getElementById('recipientsBar');
+  const chips = document.getElementById('recipientChips');
+  const sel = suppliers.filter(s => state.selectedSuppliers.has(s.id));
+  if (!sel.length) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  chips.innerHTML = sel.map(s => `
+    <div class="recipient-chip"><div class="r-dot"></div>${esc(s.name)} &lt;${esc(s.email)}&gt;</div>
+  `).join('');
+}
+
+// ── PREVIEW ──────────────────────────────────────────────────────────────
+function renderPreview() {
+  const co = COMPANIES[state.company];
+  const buyerName = document.getElementById('buyerName').value.trim();
+  const buyerRole = document.getElementById('buyerRole').value.trim();
+  const buyerEmail = document.getElementById('buyerEmail').value.trim();
+  const buyerPhone = document.getElementById('buyerPhone').value.trim();
+  const sdc = document.getElementById('sdcNum').value.trim();
+  const deadlineVal = document.getElementById('deadline').value;
+  const payment = document.getElementById('payment').value.trim();
+  const opType = document.getElementById('opType').value.trim();
+
+  const deadline = deadlineVal ? formatDL(deadlineVal) : '[DATA]';
+  const subject = sdc ? `[${sdc}] Solicitação de Cotação – ${co.fantasia}` : `Solicitação de Cotação – ${co.fantasia}`;
+
+  document.getElementById('emailSubjectBar').textContent = 'Assunto: ' + subject;
+
+  const itemsRows = state.items.map((item, i) => `
+    <tr>
+      <td>${String(i+1).padStart(3,'0')}</td>
+      <td style="text-align:left;">${esc(item.desc)}</td>
+      <td>${esc(item.un)}</td>
+      <td>${esc(item.qt)}</td>
+    </tr>
+  `).join('');
+
+  const sigBlock = buildSignature(co, buyerName, buyerRole, buyerEmail, buyerPhone);
+
+  document.getElementById('emailBody').innerHTML = `
+    <p class="greeting">Prezado Fornecedor,</p>
+
+    <p class="intro">
+      A <strong>${esc(co.nome)}</strong>, convida sua empresa a apresentar
+      <strong>proposta comercial</strong> para os itens relacionados nesta solicitação.
+      ${sdc ? `<em style="color:#666;font-size:12px;">(Ref.: ${esc(sdc)})</em>` : ''}
+    </p>
+
+    <p>Solicitamos que a cotação seja elaborada <strong>em conformidade com todos os requisitos informados</strong>, contemplando:</p>
+    <ul>
+      <li>Especificações técnicas dos materiais/serviços;</li>
+      <li>Prazos de entrega;</li>
+      <li>Condições comerciais aplicáveis;</li>
+      <li>Demais orientações constantes do pedido.</li>
+    </ul>
+
+    <p class="section-heading">1. ITENS A SEREM FORNECIDOS E SUAS ESPECIFICAÇÕES</p>
+    <table>
+      <thead>
+        <tr><th>ITEM</th><th>DESCRIÇÃO</th><th>UN</th><th>QUANT.</th></tr>
+      </thead>
+      <tbody>${itemsRows}</tbody>
+    </table>
+
+    <p class="section-heading">2. Condições gerais do fornecimento</p>
+    <div class="conditions">
+      <div class="cond-item">
+        <span style="text-decoration:underline;"><strong>Condições de pagamento:</strong></span>
+        <em>&nbsp;${esc(payment) || 'À Negociar'}.</em>
+      </div>
+      <div class="cond-item">
+        <em style="text-decoration:underline;"><strong>Oferta de produtos similar:</strong>
+        Os produtos ofertados pelo fornecedor deverão atender integralmente às especificações previstas no quadro dos itens desta solicitação.</em>
+      </div>
+      <div class="cond-item">
+        <em style="text-decoration:underline;"><strong>Tipo De Operação:</strong>
+        ${esc(opType) || 'Aquisição para Revenda'}.</em>
+      </div>
+      <div class="cond-item">
+        <strong>Garantia:</strong> O fornecedor deve informar o prazo e as condições de garantia dos produtos ofertados.
+      </div>
+    </div>
+
+    <p class="section-heading">3. Orientações gerais</p>
+    <div class="conditions">
+      <div class="cond-item"><strong>Não altere o Assunto do e-mail.</strong> A identificação da proposta é feita exclusivamente pelo número da SDC.</div>
+      <div class="cond-item"><strong>Dúvidas técnicas exclusivamente por e-mail.</strong> Devido ao alto volume, não tratamos de processos por telefone ou mensagens.</div>
+    </div>
+
+    <div class="deadline-highlight">
+      <span style="text-decoration:underline;font-style:italic;"><strong>4. Prazo limite para envio das propostas:</strong></span>
+      <span class="deadline-text">&nbsp;${deadline}.</span>
+    </div>
+
+    ${sigBlock}
+
+    <div class="sig-disclaimer">
+      Este e-mail e quaisquer anexos podem conter informações confidenciais e/ou sujeitas a sigilo legal. Qualquer uso, divulgação ou cópia não autorizada é estritamente proibido. Caso você não seja o destinatário pretendido, notifique o remetente e exclua esta mensagem. A Empresa reserva-se o direito de monitorar comunicações eletrônicas para garantir conformidade com padrões legais e regulatórios. Embora tenhamos adotado medidas para prevenir vírus, recomenda-se que o destinatário adote suas próprias precauções. O tratamento de dados pessoais observa o Regulamento Geral de Proteção de Dados da União Europeia (GDPR – UE 2016/679) e a Lei Geral de Proteção de Dados Pessoais (LGPD – Lei nº 13.709/2018).
+    </div>
+  `;
+}
+
+function buildSignature(co, name, role, email, phone) {
+  const hasInfo = name || role || email;
+  if (!hasInfo) {
+    return `<div class="signature">
+      <div class="sig-name" style="color:#aaa;font-style:italic;">[Nome do Responsável]</div>
+      <div class="sig-role" style="color:#ccc;">[Cargo]</div>
+      <div class="sig-address" style="margin-top:8px;">${esc(co.endereco)}<br>${esc(co.cidade)} – CEP ${esc(co.cep)}<br>CNPJ: ${esc(co.cnpj)}</div>
+    </div>`;
+  }
+  return `<div class="signature">
+    ${name ? `<div class="sig-name">${esc(name)}</div>` : ''}
+    ${role ? `<div class="sig-role">${esc(role)}</div>` : ''}
+    ${phone ? `<div class="sig-role">T: ${esc(phone)}</div>` : ''}
+    ${email ? `<div class="sig-email">${esc(email)}</div>` : ''}
+    <div class="sig-address" style="margin-top:8px;">${esc(co.endereco)}<br>${esc(co.cidade)} – CEP ${esc(co.cep)}<br>CNPJ: ${esc(co.cnpj)}</div>
+  </div>`;
+}
+
+function formatDL(val) {
+  const d = new Date(val);
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm}/${yyyy} até às ${hh}:${min}hrs`;
+}
+
+// ── SEND & COPY ──────────────────────────────────────────────────────────
+function getEmailText() {
+  const el = document.getElementById('emailBody');
+  // Get plain text version
+  return el.innerText;
+}
+
+function getEmailHTML() {
+  return document.getElementById('emailBody').innerHTML;
+}
+
+function getSubject() {
+  const co = COMPANIES[state.company];
+  const sdc = document.getElementById('sdcNum').value.trim();
+  return sdc ? `[${sdc}] Solicitação de Cotação – ${co.fantasia}` : `Solicitação de Cotação – ${co.fantasia}`;
+}
+
+function sendAll() {
+  const selected = suppliers.filter(s => state.selectedSuppliers.has(s.id));
+  if (!selected.length) return;
+
+  const subject = encodeURIComponent(getSubject());
+  const body = encodeURIComponent(getEmailText());
+  const to = selected.map(s => s.email).join(',');
+
+  const mailto = `mailto:${to}?subject=${subject}&body=${body}`;
+  window.location.href = mailto;
+  showToast(`Abrindo e-mail para ${selected.length} fornecedor${selected.length>1?'es':''}...`);
+}
+
+function copyEmail() {
+  const text = getEmailText();
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('Texto copiado para a área de transferência!');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Texto copiado!');
+  });
+}
+
+// ── SUPPLIERS GRID PAGE ──────────────────────────────────────────────────
+function renderSuppliersGrid() {
+  const grid = document.getElementById('suppliersGrid');
+  if (!suppliers.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="empty-icon">📭</div>
+      <p>Nenhum fornecedor cadastrado.<br>Clique em "Novo Fornecedor" para começar.</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = suppliers.map(s => `
+    <div class="supplier-full-card">
+      <div class="sfcard-name">${esc(s.name)}</div>
+      <div class="sfcard-email">${esc(s.contact ? s.contact + ' · ' : '')}${esc(s.email)}</div>
+      <div class="sfcard-tags">
+        ${s.tags.map(t => `<span class="tag">${t}</span>`).join('')}
+      </div>
+      <div class="sfcard-actions">
+        <button class="btn-sm" onclick="editSupplier('${s.id}')">Editar</button>
+        <button class="btn-sm danger" onclick="deleteSupplier('${s.id}')">Remover</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────
+function openSupplierModal(id = null) {
+  state.editingId = id;
+  state.currentTags = [];
+  document.getElementById('modalTitle').textContent = id ? 'Editar Fornecedor' : 'Novo Fornecedor';
+
+  if (id) {
+    const s = suppliers.find(x => x.id === id);
+    document.getElementById('mName').value = s.name;
+    document.getElementById('mContact').value = s.contact || '';
+    document.getElementById('mEmail').value = s.email;
+    document.getElementById('mPhone').value = s.phone || '';
+    state.currentTags = [...s.tags];
+  } else {
+    ['mName','mContact','mEmail','mPhone'].forEach(f => document.getElementById(f).value = '');
+  }
+
+  renderCatList();
+  renderCatSelectedPreview();
+  document.getElementById('catSearch').value = '';
+  document.getElementById('catNewInput').value = '';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function editSupplier(id) { openSupplierModal(id); }
+
+function deleteSupplier(id) {
+  const s = suppliers.find(x => x.id === id);
+  if (!confirm(`Remover "${s.name}"?`)) return;
+  suppliers = suppliers.filter(x => x.id !== id);
+  state.selectedSuppliers.delete(id);
+  saveSuppliers();
+  renderSuppliersGrid();
+  renderSupplierList();
+  renderFilterBar();
+  showToast(`"${s.name}" removido.`);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+  state.editingId = null;
+  state.currentTags = [];
+}
+
+function saveSupplier() {
+  const name = document.getElementById('mName').value.trim();
+  const email = document.getElementById('mEmail').value.trim();
+  if (!name || !email) { showToast('Nome e e-mail são obrigatórios!'); return; }
+
+  const data = {
+    name,
+    contact: document.getElementById('mContact').value.trim(),
+    email,
+    phone: document.getElementById('mPhone').value.trim(),
+    tags: [...state.currentTags],
+  };
+
+  if (state.editingId) {
+    const idx = suppliers.findIndex(s => s.id === state.editingId);
+    suppliers[idx] = { ...suppliers[idx], ...data };
+    showToast(`"${name}" atualizado!`);
+  } else {
+    suppliers.push({ id: 's' + Date.now(), ...data });
+    showToast(`"${name}" cadastrado!`);
+  }
+
+  saveSuppliers();
+  closeModal();
+  renderSuppliersGrid();
+  renderSupplierList();
+  renderFilterBar();
+}
+
+// ── CATEGORY PICKER ───────────────────────────────────────────────────────
+function getAllCats() {
+  // Collect all existing tags across all suppliers, sorted alphabetically
+  const all = new Set(suppliers.flatMap(s => s.tags));
+  // Also include any currently selected tags (in case they're new)
+  state.currentTags.forEach(t => all.add(t));
+  return [...all].sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+}
+
+function renderCatList() {
+  const list = document.getElementById('catList');
+  const search = (document.getElementById('catSearch').value || '').toLowerCase();
+  const all = getAllCats();
+  const filtered = search ? all.filter(t => t.toLowerCase().includes(search)) : all;
+
+  if (!filtered.length) {
+    list.innerHTML = `<div style="padding:12px 8px;text-align:center;color:var(--muted);font-size:11px;font-style:italic;">Nenhuma categoria encontrada</div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(tag => {
+    const sel = state.currentTags.includes(tag);
+    return `<div class="cat-item ${sel ? 'selected' : ''}" onclick="toggleCat('${esc(tag)}')">
+      <div class="cat-checkbox">
+        <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1.5,6 4.5,9 10.5,3"/>
+        </svg>
+      </div>
+      <span class="cat-item-label">${esc(tag)}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleCat(tag) {
+  if (state.currentTags.includes(tag)) {
+    state.currentTags = state.currentTags.filter(t => t !== tag);
+  } else {
+    state.currentTags.push(tag);
+    state.currentTags.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+  }
+  renderCatList();
+  renderCatSelectedPreview();
+}
+
+function addNewCat() {
+  const input = document.getElementById('catNewInput');
+  const val = input.value.trim();
+  if (!val) return;
+  if (!state.currentTags.includes(val)) {
+    state.currentTags.push(val);
+    state.currentTags.sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }));
+  }
+  input.value = '';
+  document.getElementById('catSearch').value = '';
+  renderCatList();
+  renderCatSelectedPreview();
+}
+
+function removeTagFromPreview(tag) {
+  state.currentTags = state.currentTags.filter(t => t !== tag);
+  renderCatList();
+  renderCatSelectedPreview();
+}
+
+function renderCatSelectedPreview() {
+  const preview = document.getElementById('catSelectedPreview');
+  if (!state.currentTags.length) {
+    preview.innerHTML = '<span style="font-size:11px;color:var(--muted);font-style:italic;">Nenhuma categoria selecionada</span>';
+    return;
+  }
+  preview.innerHTML = state.currentTags.map(tag =>
+    `<span class="tag-pill">${esc(tag)}<button onclick="removeTagFromPreview('${esc(tag)}')" type="button">×</button></span>`
+  ).join('');
+}
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+// ── PRICES DATA ────────────────────────────────────────────────────────────
+let prices = loadPrices();
+let gsheetsConfig = { url: '', interval: 0, timer: null, lastSync: null };
+
+function loadPrices() {
+  try { const p = sessionStorage.getItem('sc_prices'); if (p) return JSON.parse(p); } catch(e) {}
+  return [
+    { id:'p1', desc:'TUBO PEAD DRENAGEM 200MM', un:'M', supplier:'TuboFlex Distribuidora', destUnit:'MININCO', qty:'60,00', unit:'28,50', total:'1.710,00', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'ICMS 12%', delivery:'7 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
+    { id:'p2', desc:'TUBO PEAD DRENAGEM 200MM', un:'M', supplier:'Plasticon Brasil', destUnit:'MININCO', qty:'60,00', unit:'26,80', total:'1.608,00', frete:'FOB', freteVal:'R$ 180,00', impostos:'Com impostos', impostosObs:'', delivery:'5 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
+    { id:'p3', desc:'TUBO PEAD DRENAGEM 200MM', un:'M', supplier:'HydroConect Ltda', destUnit:'HDPE', qty:'60,00', unit:'27,20', total:'1.632,00', frete:'CIF', freteVal:'Incluso', impostos:'Sem impostos', impostosObs:'ST não inclusa', delivery:'4 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
+    { id:'p4', desc:'JOELHO 45° 200mm, ESGOTO PEAD', un:'PC', supplier:'HydroConect Ltda', destUnit:'MININCO', qty:'14,00', unit:'52,00', total:'728,00', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'', delivery:'3 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
+    { id:'p5', desc:'JOELHO 45° 200mm, ESGOTO PEAD', un:'PC', supplier:'Plasticon Brasil', destUnit:'HDPE', qty:'14,00', unit:'48,50', total:'679,00', frete:'FOB', freteVal:'R$ 60,00', impostos:'Com impostos', impostosObs:'', delivery:'5 dias úteis', date:'2026-01-15', sdc:'SDC-2025-089' },
+    { id:'p6', desc:'ABRAÇADEIRAS METÁLICAS TIPO U P/ TUBO DRENAGEM 200mm', un:'PC', supplier:'MetalFix Soluções', destUnit:'MININCO', qty:'33,00', unit:'12,80', total:'422,40', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'', delivery:'2 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
+    { id:'p7', desc:'ABRAÇADEIRAS METÁLICAS TIPO U P/ TUBO DRENAGEM 200mm', un:'PC', supplier:'Infra Suprimentos', destUnit:'HDPE', qty:'33,00', unit:'13,50', total:'445,50', frete:'FOB', freteVal:'R$ 45,00', impostos:'Sem impostos', impostosObs:'', delivery:'4 dias úteis', date:'2025-12-05', sdc:'SDC-2025-089' },
+    { id:'p8', desc:'LUVA DE CORRER 200mm, ESGOTO PEAD', un:'PC', supplier:'HydroConect Ltda', destUnit:'MININCO', qty:'12,00', unit:'41,00', total:'492,00', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'ICMS 12%', delivery:'3 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
+  ];
+}
+
+function savePrices() {
+  try { sessionStorage.setItem('sc_prices', JSON.stringify(prices)); } catch(e) {}
+}
+
+function parseBR(val) {
+  if (!val) return 0;
+  return parseFloat(String(val).replace(/[R$\s]/g,'').replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function fmtBRL(n) {
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ── PRICES PAGE ────────────────────────────────────────────────────────────
+function renderPricesPage() {
+  renderPricesStats();
+  renderPricesTable();
+  renderSupplierDatalist();
+  renderSupplierFilterSelect();
+  renderDescDatalist();
+  updateGSheetsBtnState();
+}
+
+function renderPricesStats() {
+  const el = document.getElementById('pricesStats');
+  if (!prices.length) { el.innerHTML = ''; return; }
+
+  const unitVals = prices.map(p => parseBR(p.unit)).filter(v => v > 0);
+  const best = unitVals.length ? Math.min(...unitVals) : 0;
+  const avg  = unitVals.length ? unitVals.reduce((a,b)=>a+b,0)/unitVals.length : 0;
+  const sorted = [...prices].sort((a,b) => b.date.localeCompare(a.date));
+  const last = sorted[0];
+  const cifCount = prices.filter(p=>p.frete==='CIF').length;
+  const fobCount = prices.filter(p=>p.frete==='FOB').length;
+
+  el.innerHTML = `
+    <div class="stat-card stat-best">
+      <div class="stat-label">Melhor Preço Unit.</div>
+      <div class="stat-value">R$ ${fmtBRL(best)}</div>
+      <div class="stat-sub">menor unitário registrado</div>
+    </div>
+    <div class="stat-card stat-avg">
+      <div class="stat-label">Preço Médio Unit.</div>
+      <div class="stat-value">R$ ${fmtBRL(avg)}</div>
+      <div class="stat-sub">média de ${unitVals.length} registros</div>
+    </div>
+    <div class="stat-card stat-last">
+      <div class="stat-label">Última Entrada</div>
+      <div class="stat-value" style="font-size:14px;font-family:var(--sans);font-weight:600;">${last ? last.supplier : '—'}</div>
+      <div class="stat-sub">${last ? fmtDate(last.date) + ' · R$ ' + last.unit + (last.destUnit ? ' · '+last.destUnit : '') : ''}</div>
+    </div>
+    <div class="stat-card stat-count">
+      <div class="stat-label">Frete CIF / FOB</div>
+      <div class="stat-value" style="font-size:16px;display:flex;align-items:center;gap:8px;">
+        <span style="color:var(--accent2);">${cifCount} CIF</span>
+        <span style="color:var(--muted);font-size:12px;">/</span>
+        <span style="color:var(--blue);">${fobCount} FOB</span>
+      </div>
+      <div class="stat-sub">${prices.length} registros · ${[...new Set(prices.map(p=>p.desc))].length} itens</div>
+    </div>
+  `;
+}
+
+function renderPricesTable() {
+  const tbody = document.getElementById('pricesTableBody');
+  const empty = document.getElementById('pricesEmpty');
+  const tbl   = document.querySelector('.prices-table-wrap table');
+  const search      = (document.getElementById('priceSearch').value || '').toLowerCase();
+  const suppFilter  = document.getElementById('priceSupplierFilter').value;
+  const unitFilter  = document.getElementById('priceUnitFilter').value;
+  const freteFilter = document.getElementById('priceFreteFilter').value;
+  const sort        = document.getElementById('priceSortFilter').value;
+
+  let rows = [...prices];
+  if (search)      rows = rows.filter(p => p.desc.toLowerCase().includes(search) || p.supplier.toLowerCase().includes(search));
+  if (suppFilter)  rows = rows.filter(p => p.supplier === suppFilter);
+  if (unitFilter)  rows = rows.filter(p => p.destUnit === unitFilter);
+  if (freteFilter) rows = rows.filter(p => p.frete === freteFilter);
+
+  rows.sort((a,b) => {
+    if (sort==='date_desc') return b.date.localeCompare(a.date);
+    if (sort==='date_asc')  return a.date.localeCompare(b.date);
+    if (sort==='price_asc') return parseBR(a.unit)-parseBR(b.unit);
+    if (sort==='price_desc')return parseBR(b.unit)-parseBR(a.unit);
+    if (sort==='item_asc')  return a.desc.localeCompare(b.desc,'pt-BR');
+    return 0;
+  });
+
+  if (!rows.length) {
+    tbody.innerHTML=''; empty.style.display='block'; tbl.style.display='none'; return;
+  }
+  empty.style.display='none'; tbl.style.display='table';
+
+  // Best price per item
+  const bestByItem = {};
+  prices.forEach(p => { const v=parseBR(p.unit); if(!v)return; if(!bestByItem[p.desc]||v<parseBR(bestByItem[p.desc].unit)) bestByItem[p.desc]=p; });
+  // Most recent per item
+  const lastByItem = {};
+  [...prices].sort((a,b)=>b.date.localeCompare(a.date)).forEach(p=>{ if(!lastByItem[p.desc]) lastByItem[p.desc]=p; });
+
+  tbody.innerHTML = rows.map(p => {
+    const isBest = bestByItem[p.desc]?.id === p.id;
+    const isLast = lastByItem[p.desc]?.id === p.id;
+
+    const freeBadge = p.frete === 'CIF'
+      ? `<span class="badge-cif">CIF</span>`
+      : p.frete === 'FOB'
+      ? `<span class="badge-fob">FOB</span>`
+      : '—';
+
+    const destBadge = p.destUnit === 'MININCO'
+      ? `<span class="badge-mininco">MG</span>`
+      : p.destUnit === 'HDPE'
+      ? `<span class="badge-hdpe">SP</span>`
+      : '<span style="color:var(--muted);font-size:11px;">Ambas</span>';
+
+    const impostosLabel = p.impostos || '—';
+    const impostosObs = p.impostosObs ? `<div style="font-size:10px;color:var(--muted);">${esc(p.impostosObs)}</div>` : '';
+
+    return `<tr>
+      <td>
+        <div class="price-item-name">${esc(p.desc)}</div>
+        <div style="display:flex;gap:3px;margin-top:2px;">
+          ${isBest ? '<span class="badge-best">✓ Melhor</span>' : ''}
+          ${isLast&&!isBest ? '<span class="badge-last">↑ Recente</span>' : ''}
+        </div>
+      </td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted);text-align:center;">${esc(p.un)}</td>
+      <td class="price-supplier">${esc(p.supplier)}</td>
+      <td style="text-align:center;">${destBadge}</td>
+      <td><span class="price-unit-val">R$ ${esc(p.unit)}</span></td>
+      <td><span class="price-total-val">R$ ${esc(p.total)}</span></td>
+      <td>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          ${freeBadge}
+          ${p.freteVal ? `<span style="font-size:10px;color:var(--muted);">${esc(p.freteVal)}</span>` : ''}
+        </div>
+      </td>
+      <td>
+        <div style="font-size:11px;font-weight:600;">${esc(impostosLabel)}</div>
+        ${impostosObs}
+      </td>
+      <td style="font-size:11px;color:var(--muted);white-space:nowrap;">${esc(p.delivery||'—')}</td>
+      <td class="price-date">${fmtDate(p.date)}</td>
+      <td>${p.sdc?`<span class="price-sdc">${esc(p.sdc)}</span>`:'—'}</td>
+      <td>
+        <div style="display:flex;gap:3px;">
+          <button class="btn-sm" onclick="editPrice('${p.id}')" title="Editar">✏</button>
+          <button class="btn-sm danger" onclick="deletePrice('${p.id}')" title="Remover">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y}`;
+}
+
+function renderSupplierFilterSelect() {
+  const sel = document.getElementById('priceSupplierFilter');
+  const val = sel.value;
+  const names = [...new Set(prices.map(p=>p.supplier))].sort();
+  sel.innerHTML = '<option value="">Todos fornecedores</option>' +
+    names.map(n=>`<option value="${esc(n)}"${val===n?' selected':''}>${esc(n)}</option>`).join('');
+}
+
+function renderSupplierDatalist() {
+  const dl = document.getElementById('supplierDatalist');
+  if (!dl) return;
+  const names = [...new Set([...suppliers.map(s=>s.name),...prices.map(p=>p.supplier)])].sort();
+  dl.innerHTML = names.map(n=>`<option value="${esc(n)}">`).join('');
+}
+
+function renderDescDatalist() {
+  const dl = document.getElementById('descDatalist');
+  if (!dl) return;
+  const descs = [...new Set([...state.items.map(i=>i.desc),...prices.map(p=>p.desc)])].filter(Boolean).sort();
+  dl.innerHTML = descs.map(d=>`<option value="${esc(d)}">`).join('');
+}
+
+// ── ADD / EDIT PRICE MODAL ─────────────────────────────────────────────────
+function openAddPriceModal(prefill={}) {
+  document.getElementById('priceModalTitle').textContent = 'Registrar Preço Recebido';
+  document.getElementById('priceEditId').value = '';
+  document.getElementById('pmDesc').value = prefill.desc || '';
+  document.getElementById('pmUN').value = prefill.un || '';
+  document.getElementById('pmSupplier').value = prefill.supplier || '';
+  document.getElementById('pmDestUnit').value = prefill.destUnit || '';
+  document.getElementById('pmQty').value = prefill.qty || '';
+  document.getElementById('pmUnit').value = '';
+  document.getElementById('pmTotal').value = '';
+  document.getElementById('pmFrete').value = '';
+  document.getElementById('pmFreteVal').value = '';
+  document.getElementById('pmImpostos').value = '';
+  document.getElementById('pmImpostosObs').value = '';
+  document.getElementById('pmDelivery').value = '';
+  document.getElementById('pmSDC').value = document.getElementById('sdcNum')?.value || '';
+  document.getElementById('pmDate').value = new Date().toISOString().slice(0,10);
+  renderSupplierDatalist();
+  renderDescDatalist();
+  document.getElementById('priceModalOverlay').classList.add('open');
+}
+
+function editPrice(id) {
+  const p = prices.find(x=>x.id===id);
+  if (!p) return;
+  document.getElementById('priceModalTitle').textContent = 'Editar Registro de Preço';
+  document.getElementById('priceEditId').value = id;
+  document.getElementById('pmDesc').value = p.desc;
+  document.getElementById('pmUN').value = p.un;
+  document.getElementById('pmSupplier').value = p.supplier;
+  document.getElementById('pmDestUnit').value = p.destUnit||'';
+  document.getElementById('pmQty').value = p.qty;
+  document.getElementById('pmUnit').value = p.unit;
+  document.getElementById('pmTotal').value = p.total;
+  document.getElementById('pmFrete').value = p.frete||'';
+  document.getElementById('pmFreteVal').value = p.freteVal||'';
+  document.getElementById('pmImpostos').value = p.impostos||'';
+  document.getElementById('pmImpostosObs').value = p.impostosObs||'';
+  document.getElementById('pmDelivery').value = p.delivery||'';
+  document.getElementById('pmSDC').value = p.sdc||'';
+  document.getElementById('pmDate').value = p.date;
+  renderSupplierDatalist();
+  renderDescDatalist();
+  document.getElementById('priceModalOverlay').classList.add('open');
+}
+
+function closePriceModal() {
+  document.getElementById('priceModalOverlay').classList.remove('open');
+}
+
+function calcPriceTotal() {
+  const unit = parseBR(document.getElementById('pmUnit').value);
+  const qty  = parseBR(document.getElementById('pmQty').value);
+  if (unit && qty) document.getElementById('pmTotal').value = fmtBRL(unit * qty);
+}
+
+function savePrice() {
+  const desc     = document.getElementById('pmDesc').value.trim();
+  const supplier = document.getElementById('pmSupplier').value.trim();
+  const unit     = document.getElementById('pmUnit').value.trim();
+  if (!desc||!supplier||!unit) { showToast('Descrição, fornecedor e preço unitário são obrigatórios!'); return; }
+
+  const data = {
+    desc, un: document.getElementById('pmUN').value.trim().toUpperCase(),
+    supplier,
+    destUnit:    document.getElementById('pmDestUnit').value,
+    qty:         document.getElementById('pmQty').value.trim(),
+    unit,
+    total:       document.getElementById('pmTotal').value.trim(),
+    frete:       document.getElementById('pmFrete').value,
+    freteVal:    document.getElementById('pmFreteVal').value.trim(),
+    impostos:    document.getElementById('pmImpostos').value,
+    impostosObs: document.getElementById('pmImpostosObs').value.trim(),
+    delivery:    document.getElementById('pmDelivery').value.trim(),
+    date:        document.getElementById('pmDate').value,
+    sdc:         document.getElementById('pmSDC').value.trim(),
+  };
+
+  const editId = document.getElementById('priceEditId').value;
+  if (editId) {
+    const idx = prices.findIndex(p=>p.id===editId);
+    prices[idx] = { ...prices[idx], ...data };
+    showToast('Registro atualizado!');
+  } else {
+    prices.push({ id:'p'+Date.now(), ...data });
+    showToast('Preço registrado!');
+  }
+  savePrices(); closePriceModal(); renderPricesPage(); renderItemsWithPriceHints();
+}
+
+function deletePrice(id) {
+  if (!confirm('Remover este registro?')) return;
+  prices = prices.filter(p=>p.id!==id);
+  savePrices(); renderPricesPage(); renderItemsWithPriceHints();
+  showToast('Registro removido.');
+}
+
+// ── PRICE HINTS IN COMPOSER ────────────────────────────────────────────────
+function getPriceHint(desc) {
+  if (!desc || !prices.length) return null;
+  const norm = desc.toLowerCase().trim();
+  let matches = prices.filter(p => p.desc.toLowerCase().trim() === norm);
+  if (!matches.length) matches = prices.filter(p =>
+    norm.length > 8 && (p.desc.toLowerCase().includes(norm.slice(0,10)) || norm.includes(p.desc.toLowerCase().slice(0,10)))
+  );
+  if (!matches.length) return null;
+  // Show best price
+  const best = matches.sort((a,b)=>parseBR(a.unit)-parseBR(b.unit))[0];
+  const last = [...matches].sort((a,b)=>b.date.localeCompare(a.date))[0];
+  return { best, last, count: matches.length };
+}
+
+function renderItemsWithPriceHints() {
+  document.getElementById('itemsList').innerHTML = state.items.map((item) => {
+    const hint = getPriceHint(item.desc);
+    const hintHtml = hint
+      ? `<span class="price-hint" title="Melhor: R$ ${hint.best.unit} (${hint.best.supplier}, ${hint.best.frete||'?'}) · Último: R$ ${hint.last.unit} (${fmtDate(hint.last.date)})" onclick="showPage('prices')">${hint.best.unit}</span>`
+      : `<span style="font-family:var(--mono);font-size:10px;color:var(--border2);">—</span>`;
+    return `
+    <div class="item-row" style="grid-template-columns:1fr 48px 56px auto 22px;">
+      <input type="text" value="${esc(item.desc)}" placeholder="Descrição..." oninput="updateItem(${item.id},'desc',this.value)" />
+      <input type="text" value="${esc(item.un)}" placeholder="UN" oninput="updateItem(${item.id},'un',this.value)" style="text-align:center;" />
+      <input type="text" value="${esc(item.qt)}" placeholder="0,00" oninput="updateItem(${item.id},'qt',this.value)" style="text-align:right;" />
+      ${hintHtml}
+      <button class="del-btn" onclick="removeItem(${item.id})" title="Remover">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ── GOOGLE SHEETS ─────────────────────────────────────────────────────────
+function openGSheetsModal() {
+  document.getElementById('gsheetsUrl').value = gsheetsConfig.url || '';
+  document.getElementById('gsheetsInterval').value = gsheetsConfig.interval || '300';
+  document.getElementById('gsheetsModalOverlay').classList.add('open');
+}
+
+function closeGSheetsModal() {
+  document.getElementById('gsheetsModalOverlay').classList.remove('open');
+}
+
+async function connectGSheets() {
+  const url = document.getElementById('gsheetsUrl').value.trim();
+  if (!url) { showToast('Cole o link da planilha!'); return; }
+  gsheetsConfig.url = url;
+  gsheetsConfig.interval = parseInt(document.getElementById('gsheetsInterval').value)||0;
+  closeGSheetsModal();
+  await syncGSheets();
+  if (gsheetsConfig.timer) clearInterval(gsheetsConfig.timer);
+  if (gsheetsConfig.interval > 0)
+    gsheetsConfig.timer = setInterval(syncGSheets, gsheetsConfig.interval * 1000);
+}
+
+async function syncGSheets() {
+  if (!gsheetsConfig.url) { showToast('Configure o Google Sheets primeiro.'); return; }
+  showToast('Sincronizando com Google Sheets...');
+  try {
+    const res = await fetch(gsheetsConfig.url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const imported = parseCSVText(text);
+    const added = mergeImportedPrices(imported);
+    gsheetsConfig.lastSync = new Date();
+    updateGSheetsBtnState();
+    showToast(`✓ ${added} novos registros importados!`);
+    renderPricesPage(); renderItemsWithPriceHints();
+  } catch(e) {
+    showToast('Erro ao conectar. Verifique o link e se a planilha está pública como CSV.');
+  }
+}
+
+function updateGSheetsBtnState() {
+  const label = document.getElementById('gsheetsBtnLabel');
+  const syncBtn = document.getElementById('btnSync');
+  const statusBar = document.getElementById('gsheetsStatusBar');
+  if (gsheetsConfig.url) {
+    label.textContent = 'Reconfigurar Sheets';
+    syncBtn.style.display = 'inline-flex';
+    if (gsheetsConfig.lastSync) {
+      const t = gsheetsConfig.lastSync.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+      statusBar.style.display = 'flex';
+      statusBar.innerHTML = `<span class="gsheets-status"><span style="width:6px;height:6px;background:var(--accent2);border-radius:50%;"></span>Google Sheets conectado · última sync ${t}${gsheetsConfig.interval>0?' · auto':''}</span>`;
+    }
+  } else {
+    label.textContent = 'Conectar Google Sheets';
+    syncBtn.style.display = 'none';
+    statusBar.style.display = 'none';
+  }
+}
+
+// ── CSV PARSING ───────────────────────────────────────────────────────────
+function parseCSVText(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const sep = lines[0].includes(';') ? ';' : ',';
+  const headers = lines[0].split(sep).map(h=>h.trim().toLowerCase().replace(/["""]/g,''));
+
+  const colMap = {
+    desc:        ['item','descrição','descricao','produto','material','description'],
+    un:          ['un','unidade','unit','und'],
+    supplier:    ['fornecedor','supplier','empresa','vendor'],
+    destUnit:    ['destino','unid destino','unidade destino','dest','empresa destino'],
+    qty:         ['qtd','quantidade','qty','quant'],
+    unit:        ['preço unit','preco unit','preço unitário','preco unitario','unit price','valor unit','v.unit'],
+    total:       ['preço total','preco total','total','valor total','v.total'],
+    frete:       ['frete','tipo frete','cif/fob'],
+    freteVal:    ['valor frete','frete valor','freight value'],
+    impostos:    ['impostos','imposto','tax','tributos'],
+    impostosObs: ['obs fiscal','observação fiscal','obs.fiscal','tax obs'],
+    delivery:    ['prazo','prazo entrega','delivery','entrega'],
+    date:        ['data','date','data proposta','data cotação'],
+    sdc:         ['sdc','sdc ref','referencia','ref'],
+  };
+
+  const cols = {};
+  Object.keys(colMap).forEach(k => {
+    const syns = colMap[k];
+    cols[k] = headers.findIndex(h => syns.some(s => h.includes(s)));
+  });
+
+  const get = (cells, key) => cols[key]>=0 ? (cells[cols[key]]||'').trim().replace(/^[""]|[""]$/g,'') : '';
+
+  const results = [];
+  for (let i=1; i<lines.length; i++) {
+    const cells = splitCSVLine(lines[i], sep);
+    const desc = get(cells,'desc'); const supplier = get(cells,'supplier');
+    if (!desc && !supplier) continue;
+    let dateStr = get(cells,'date');
+    if (dateStr) { const m=dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); if(m) dateStr=`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; }
+    results.push({ id:'imp_'+Date.now()+'_'+i, desc, un:get(cells,'un').toUpperCase(),
+      supplier, destUnit:get(cells,'destUnit'), qty:get(cells,'qty'),
+      unit:get(cells,'unit'), total:get(cells,'total'),
+      frete:get(cells,'frete'), freteVal:get(cells,'freteVal'),
+      impostos:get(cells,'impostos'), impostosObs:get(cells,'impostosObs'),
+      delivery:get(cells,'delivery'), date:dateStr||new Date().toISOString().slice(0,10),
+      sdc:get(cells,'sdc') });
+  }
+  return results;
+}
+
+function splitCSVLine(line, sep) {
+  const cells=[]; let cur='', inQ=false;
+  for(const ch of line) { if(ch==='"'){inQ=!inQ;}else if(ch===sep&&!inQ){cells.push(cur);cur='';}else cur+=ch; }
+  cells.push(cur); return cells;
+}
+
+function mergeImportedPrices(imported) {
+  const existing = new Set(prices.map(p=>`${p.desc}|${p.supplier}|${p.date}`));
+  let added=0;
+  imported.forEach(p=>{ const k=`${p.desc}|${p.supplier}|${p.date}`; if(!existing.has(k)){prices.push(p);added++;} });
+  savePrices(); return added;
+}
+
+function exportPricesCSV() {
+  if (!prices.length) { showToast('Nenhum dado para exportar.'); return; }
+  const headers = ['Item','UN','Fornecedor','Destino','Qtd','Preço Unit.','Preço Total','Frete','Valor Frete','Impostos','Obs. Fiscal','Prazo Entrega','Data','SDC'];
+  const rows = prices.map(p=>[p.desc,p.un,p.supplier,p.destUnit,p.qty,p.unit,p.total,p.frete,p.freteVal,p.impostos,p.impostosObs,p.delivery,fmtDate(p.date),p.sdc]);
+  const csv = [headers,...rows].map(r=>r.map(c=>`"${(c||'').replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`precos_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  showToast('CSV exportado!');
+}
+
+</script>
+</body>
+</html>
