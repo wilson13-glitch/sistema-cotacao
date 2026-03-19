@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema de Cotação</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1153,6 +1154,127 @@ select option { background: #fff; }
   border-radius: 4px;
 }
 
+/* ── LOGIN SCREEN ── */
+#login-screen {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px 36px;
+  width: 380px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.login-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.login-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+
+.login-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+
+.login-field { margin-bottom: 14px; }
+
+.login-btn {
+  width: 100%;
+  padding: 11px;
+  background: var(--text);
+  border: none;
+  border-radius: 6px;
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 6px;
+}
+
+.login-btn:hover { background: var(--accent); }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.login-error {
+  background: #fdecea;
+  border: 1px solid #f0b0a0;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: none;
+}
+
+/* Sync indicator */
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.sync-badge.ok { background: #e8f4ee; color: var(--accent2); border: 1px solid #a8d4b8; }
+.sync-badge.loading { background: #faeeda; color: #854f0b; border: 1px solid #f0c878; }
+.sync-badge.error { background: #fdecea; color: var(--accent); border: 1px solid #f0b0a0; }
+
+.sync-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.sync-dot.pulse { animation: blink 1.5s infinite; }
+
+/* User chip in header */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: rgba(245,242,235,0.6);
+  padding: 4px 10px;
+  border: 1px solid rgba(245,242,235,0.15);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.user-chip:hover { color: var(--bg); border-color: rgba(245,242,235,0.4); }
+
 .badge-cif {
   display: inline-block;
   background: #e8f4ee; border: 1px solid #a8d4b8; color: var(--accent2);
@@ -1182,16 +1304,63 @@ textarea { resize: vertical; min-height: 60px; }
 </head>
 <body>
 
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-mark">SC</div>
+      <div>
+        <div style="font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:1px;text-transform:uppercase;">Sistema de Cotação</div>
+        <div style="font-size:11px;color:var(--muted);">MININCO · HDPE Brazil</div>
+      </div>
+    </div>
+    <div class="login-title">Bem-vindo de volta</div>
+    <div class="login-sub">Entre com seu e-mail corporativo para continuar.</div>
+    <div id="loginError" class="login-error"></div>
+    <div class="login-field">
+      <label>E-mail</label>
+      <input type="email" id="loginEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Entrar</button>
+    <div style="text-align:center;margin-top:14px;">
+      <span style="font-size:11px;color:var(--muted);">Primeiro acesso? </span>
+      <span style="font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;" onclick="toggleRegister()">Criar conta</span>
+    </div>
+    <div id="registerFields" style="display:none;margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+      <div class="login-field">
+        <label>Nome completo</label>
+        <input type="text" id="regName" placeholder="Seu nome">
+      </div>
+      <div class="login-field">
+        <label>Cargo</label>
+        <input type="text" id="regRole" placeholder="Ex: Suprimentos | Compradora">
+      </div>
+      <button class="login-btn" onclick="doRegister()" style="background:var(--accent2);">Criar Conta</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="logo">
     <div class="logo-mark">SC</div>
     Sistema de Cotação
   </div>
-  <nav class="header-nav">
-    <button class="nav-tab active" onclick="showPage('composer')">Composer</button>
-    <button class="nav-tab" onclick="showPage('suppliers')">Fornecedores</button>
-    <button class="nav-tab" onclick="showPage('prices')">Preços</button>
-  </nav>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div id="syncStatus"></div>
+    <nav class="header-nav">
+      <button class="nav-tab active" onclick="showPage('composer')">Composer</button>
+      <button class="nav-tab" onclick="showPage('suppliers')">Fornecedores</button>
+      <button class="nav-tab" onclick="showPage('prices')">Preços</button>
+    </nav>
+    <div class="user-chip" id="userChip" onclick="doLogout()">
+      <span id="userChipLabel">...</span>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </div>
+  </div>
 </header>
 
 <!-- ═══════════════ COMPOSER PAGE ═══════════════ -->
@@ -1626,6 +1795,11 @@ textarea { resize: vertical; min-height: 60px; }
 <div class="toast" id="toast"></div>
 
 <script>
+// ── SUPABASE CONFIG ────────────────────────────────────────────────────────
+const SUPA_URL = 'https://lqkzztqdfchxljhqewak.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxxa3p6dHFkZmNoeGxqaHFld2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NTk4NTAsImV4cCI6MjA4OTUzNTg1MH0.cTS99Dun_p50ehpsnlGwVwlLtuP5p-WH8ekY5zWSj74';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
 // ── STATE ──────────────────────────────────────────────────────────────────
 let state = {
   company: 'mininco',
@@ -1634,54 +1808,112 @@ let state = {
   editingId: null,
   currentTags: [],
   filterTag: null,
+  user: null,
+  userProfile: null,
 };
 
 const COMPANIES = {
   mininco: {
-    nome: 'MININCO DO BRASIL LTDA',
-    fantasia: 'MININCO',
-    cnpj: '61.748.475/0001-55',
-    ie: '52498490060',
+    nome: 'MININCO DO BRASIL LTDA', fantasia: 'MININCO',
+    cnpj: '61.748.475/0001-55', ie: '52498490060',
     endereco: 'Rua Antonio Marzinetti, 392, Ouro Preto',
-    cidade: 'Belo Horizonte/MG',
-    cep: '31.320-370',
+    cidade: 'Belo Horizonte/MG', cep: '31.320-370',
   },
   hdpe: {
-    nome: 'HDPE BRAZIL',
-    fantasia: 'HDPE do Brasil',
-    cnpj: '64.155.399/0001-62',
-    ie: '157253947119',
+    nome: 'HDPE BRAZIL', fantasia: 'HDPE do Brasil',
+    cnpj: '64.155.399/0001-62', ie: '157253947119',
     endereco: 'Rua Agenor Domingues de Siqueira, 26, KM 18',
-    cidade: 'Osasco/SP',
-    cep: '06190-090',
+    cidade: 'Osasco/SP', cep: '06190-090',
   }
 };
 
-let suppliers = loadSuppliers();
+let suppliers = [];
+let prices = [];
+let gsheetsConfig = { url: '', interval: 0, timer: null, lastSync: null };
 
-function loadSuppliers() {
-  try {
-    const s = sessionStorage.getItem('sc_suppliers');
-    if (s) return JSON.parse(s);
-  } catch(e) {}
-  return [
-    { id: 's1', name: 'TuboFlex Distribuidora', contact: 'Carlos Melo', email: 'vendas@tuboflex.com.br', phone: '', tags: ['PEAD', 'Drenagem', 'Tubos'] },
-    { id: 's2', name: 'Plasticon Brasil', contact: 'Ana Souza', email: 'cotacoes@plasticon.com.br', phone: '', tags: ['PEAD', 'Conexões', 'Esgoto'] },
-    { id: 's3', name: 'MetalFix Soluções', contact: 'João Ferreira', email: 'joao@metalfix.ind.br', phone: '', tags: ['Abraçadeiras', 'Metálico', 'Fixação'] },
-    { id: 's4', name: 'HydroConect Ltda', contact: 'Patrícia Lima', email: 'orcamentos@hydroconect.com', phone: '', tags: ['PEAD', 'Conexões', 'Luvas', 'Joelhos'] },
-    { id: 's5', name: 'Infra Suprimentos', contact: 'Roberto Alves', email: 'compras@infrasuprimentos.com.br', phone: '', tags: ['Drenagem', 'Construção Civil', 'Saneamento'] },
-  ];
+// ── AUTH ────────────────────────────────────────────────────────────────────
+function toggleRegister() {
+  const f = document.getElementById('registerFields');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
 }
 
-function saveSuppliers() {
-  try { sessionStorage.setItem('sc_suppliers', JSON.stringify(suppliers)); } catch(e) {}
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPassword').value;
+  const btn   = document.getElementById('loginBtn');
+  const err   = document.getElementById('loginError');
+  if (!email || !pw) { showLoginError('Preencha e-mail e senha.'); return; }
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { showLoginError(error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message); btn.disabled=false; btn.textContent='Entrar'; }
+}
+
+async function doRegister() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPassword').value;
+  const name  = document.getElementById('regName').value.trim();
+  const role  = document.getElementById('regRole').value.trim();
+  if (!email || !pw || !name) { showLoginError('Preencha todos os campos.'); return; }
+  if (pw.length < 6) { showLoginError('Senha mínima de 6 caracteres.'); return; }
+  const { data, error } = await sb.auth.signUp({ email, password: pw, options: { data: { name, role } } });
+  if (error) { showLoginError(error.message); return; }
+  if (data.user) {
+    await sb.from('buyers').upsert({ id: data.user.id, name, role, email });
+    showLoginError(''); showToast('Conta criada! Verifique seu e-mail se pedido.');
+  }
+}
+
+async function doLogout() {
+  if (!confirm('Sair do sistema?')) return;
+  await sb.auth.signOut();
+  location.reload();
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg; el.style.display = msg ? 'block' : 'none';
+}
+
+function setSyncStatus(state) {
+  const el = document.getElementById('syncStatus');
+  if (state === 'ok')      el.innerHTML = '<span class="sync-badge ok"><span class="sync-dot"></span>Sincronizado</span>';
+  else if (state === 'loading') el.innerHTML = '<span class="sync-badge loading"><span class="sync-dot pulse"></span>Carregando</span>';
+  else if (state === 'error')   el.innerHTML = '<span class="sync-badge error"><span class="sync-dot"></span>Erro de conexão</span>';
+  else el.innerHTML = '';
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
-window.onload = () => {
+window.onload = async () => {
+  // Listen for auth changes
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      state.user = session.user;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('userChipLabel').textContent = session.user.email.split('@')[0];
+
+      // Load buyer profile to prefill buyer fields
+      const { data: profile } = await sb.from('buyers').select('*').eq('id', session.user.id).single();
+      if (profile) {
+        state.userProfile = profile;
+        document.getElementById('buyerName').value  = profile.name  || '';
+        document.getElementById('buyerRole').value  = profile.role  || '';
+        document.getElementById('buyerEmail').value = profile.email || session.user.email;
+      }
+
+      await initApp();
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+  });
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) document.getElementById('login-screen').style.display = 'flex';
+};
+
+async function initApp() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  d.setHours(15, 0, 0, 0);
+  d.setHours(15, 0, 0);
   document.getElementById('deadline').value = d.toISOString().slice(0,16);
 
   addItem('TUBO PEAD DRENAGEM 200MM', 'M', '60,00');
@@ -1691,11 +1923,97 @@ window.onload = () => {
   addItem('LUVA SIMPLES 200mm, ESGOTO PEAD', 'PC', '10,00');
   addItem('ABRAÇADEIRAS METÁLICAS TIPO U P/ TUBO DRENAGEM 200mm', 'PC', '33,00');
 
+  setSyncStatus('loading');
+  await Promise.all([loadSuppliersFromDB(), loadPricesFromDB()]);
+  setSyncStatus('ok');
+
   renderSupplierList();
   renderFilterBar();
   renderSuppliersGrid();
   renderPreview();
-};
+
+  // ── REALTIME subscriptions ──
+  sb.channel('suppliers-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, async () => {
+      await loadSuppliersFromDB();
+      renderSupplierList(); renderFilterBar(); renderSuppliersGrid();
+      showToast('Fornecedores atualizados em tempo real');
+    }).subscribe();
+
+  sb.channel('prices-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'prices' }, async () => {
+      await loadPricesFromDB();
+      renderPricesPage(); renderItemsWithPriceHints();
+      showToast('Preços atualizados em tempo real');
+    }).subscribe();
+}
+
+// ── DB: SUPPLIERS ──────────────────────────────────────────────────────────
+async function loadSuppliersFromDB() {
+  const { data, error } = await sb.from('suppliers').select('*').order('name');
+  if (error) { setSyncStatus('error'); return; }
+  suppliers = (data || []).map(r => ({
+    id: r.id, name: r.name, contact: r.contact||'', email: r.email,
+    phone: r.phone||'', tags: r.tags||[]
+  }));
+}
+
+async function saveSupplierToDB(data, editId = null) {
+  const row = { name: data.name, contact: data.contact, email: data.email, phone: data.phone, tags: data.tags };
+  if (editId) {
+    const { error } = await sb.from('suppliers').update(row).eq('id', editId);
+    if (error) throw error;
+  } else {
+    const { error } = await sb.from('suppliers').insert(row);
+    if (error) throw error;
+  }
+}
+
+async function deleteSupplierFromDB(id) {
+  const { error } = await sb.from('suppliers').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// ── DB: PRICES ─────────────────────────────────────────────────────────────
+async function loadPricesFromDB() {
+  const { data, error } = await sb.from('prices').select('*').order('proposal_date', { ascending: false });
+  if (error) { setSyncStatus('error'); return; }
+  prices = (data || []).map(r => ({
+    id: r.id, desc: r.item_desc, un: r.un||'', supplier: r.supplier,
+    destUnit: r.dest_unit||'', qty: r.qty||'', unit: r.unit_price||'',
+    total: r.total_price||'', frete: r.frete||'', freteVal: r.frete_val||'',
+    impostos: r.impostos||'', impostosObs: r.impostos_obs||'',
+    delivery: r.delivery||'', date: r.proposal_date||'', sdc: r.sdc||''
+  }));
+}
+
+async function savePriceToDB(data, editId = null) {
+  const row = {
+    item_desc: data.desc, un: data.un, supplier: data.supplier,
+    dest_unit: data.destUnit, qty: data.qty,
+    unit_price: data.unit, total_price: data.total,
+    frete: data.frete, frete_val: data.freteVal,
+    impostos: data.impostos, impostos_obs: data.impostosObs,
+    delivery: data.delivery, proposal_date: data.date || null, sdc: data.sdc,
+    created_by: state.user?.id
+  };
+  if (editId) {
+    const { error } = await sb.from('prices').update(row).eq('id', editId);
+    if (error) throw error;
+  } else {
+    const { error } = await sb.from('prices').insert(row);
+    if (error) throw error;
+  }
+}
+
+async function deletePriceFromDB(id) {
+  const { error } = await sb.from('prices').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Legacy stubs (no-op — DB is source of truth now)
+function saveSuppliers() {}
+function savePrices() {}
 
 // ── PAGES ────────────────────────────────────────────────────────────────
 function showPage(page) {
@@ -2031,15 +2349,17 @@ function openSupplierModal(id = null) {
 
 function editSupplier(id) { openSupplierModal(id); }
 
-function deleteSupplier(id) {
+async function deleteSupplier(id) {
   const s = suppliers.find(x => x.id === id);
   if (!confirm(`Remover "${s.name}"?`)) return;
-  suppliers = suppliers.filter(x => x.id !== id);
-  state.selectedSuppliers.delete(id);
-  saveSuppliers();
-  renderSuppliersGrid();
-  renderSupplierList();
-  renderFilterBar();
+  try {
+    setSyncStatus('loading');
+    await deleteSupplierFromDB(id);
+    state.selectedSuppliers.delete(id);
+    await loadSuppliersFromDB();
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('error'); showToast('Erro ao remover: ' + e.message); return; }
+  renderSuppliersGrid(); renderSupplierList(); renderFilterBar();
   showToast(`"${s.name}" removido.`);
 }
 
@@ -2049,7 +2369,7 @@ function closeModal() {
   state.currentTags = [];
 }
 
-function saveSupplier() {
+async function saveSupplier() {
   const name = document.getElementById('mName').value.trim();
   const email = document.getElementById('mEmail').value.trim();
   if (!name || !email) { showToast('Nome e e-mail são obrigatórios!'); return; }
@@ -2062,16 +2382,18 @@ function saveSupplier() {
     tags: [...state.currentTags],
   };
 
-  if (state.editingId) {
-    const idx = suppliers.findIndex(s => s.id === state.editingId);
-    suppliers[idx] = { ...suppliers[idx], ...data };
-    showToast(`"${name}" atualizado!`);
-  } else {
-    suppliers.push({ id: 's' + Date.now(), ...data });
-    showToast(`"${name}" cadastrado!`);
+  try {
+    setSyncStatus('loading');
+    await saveSupplierToDB(data, state.editingId);
+    await loadSuppliersFromDB();
+    setSyncStatus('ok');
+    showToast(state.editingId ? `"${name}" atualizado!` : `"${name}" cadastrado!`);
+  } catch(e) {
+    setSyncStatus('error');
+    showToast('Erro ao salvar: ' + e.message);
+    return;
   }
 
-  saveSuppliers();
   closeModal();
   renderSuppliersGrid();
   renderSupplierList();
@@ -2161,26 +2483,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2800);
 }
 // ── PRICES DATA ────────────────────────────────────────────────────────────
-let prices = loadPrices();
 let gsheetsConfig = { url: '', interval: 0, timer: null, lastSync: null };
-
-function loadPrices() {
-  try { const p = sessionStorage.getItem('sc_prices'); if (p) return JSON.parse(p); } catch(e) {}
-  return [
-    { id:'p1', desc:'TUBO PEAD DRENAGEM 200MM', un:'M', supplier:'TuboFlex Distribuidora', destUnit:'MININCO', qty:'60,00', unit:'28,50', total:'1.710,00', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'ICMS 12%', delivery:'7 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
-    { id:'p2', desc:'TUBO PEAD DRENAGEM 200MM', un:'M', supplier:'Plasticon Brasil', destUnit:'MININCO', qty:'60,00', unit:'26,80', total:'1.608,00', frete:'FOB', freteVal:'R$ 180,00', impostos:'Com impostos', impostosObs:'', delivery:'5 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
-    { id:'p3', desc:'TUBO PEAD DRENAGEM 200MM', un:'M', supplier:'HydroConect Ltda', destUnit:'HDPE', qty:'60,00', unit:'27,20', total:'1.632,00', frete:'CIF', freteVal:'Incluso', impostos:'Sem impostos', impostosObs:'ST não inclusa', delivery:'4 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
-    { id:'p4', desc:'JOELHO 45° 200mm, ESGOTO PEAD', un:'PC', supplier:'HydroConect Ltda', destUnit:'MININCO', qty:'14,00', unit:'52,00', total:'728,00', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'', delivery:'3 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
-    { id:'p5', desc:'JOELHO 45° 200mm, ESGOTO PEAD', un:'PC', supplier:'Plasticon Brasil', destUnit:'HDPE', qty:'14,00', unit:'48,50', total:'679,00', frete:'FOB', freteVal:'R$ 60,00', impostos:'Com impostos', impostosObs:'', delivery:'5 dias úteis', date:'2026-01-15', sdc:'SDC-2025-089' },
-    { id:'p6', desc:'ABRAÇADEIRAS METÁLICAS TIPO U P/ TUBO DRENAGEM 200mm', un:'PC', supplier:'MetalFix Soluções', destUnit:'MININCO', qty:'33,00', unit:'12,80', total:'422,40', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'', delivery:'2 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
-    { id:'p7', desc:'ABRAÇADEIRAS METÁLICAS TIPO U P/ TUBO DRENAGEM 200mm', un:'PC', supplier:'Infra Suprimentos', destUnit:'HDPE', qty:'33,00', unit:'13,50', total:'445,50', frete:'FOB', freteVal:'R$ 45,00', impostos:'Sem impostos', impostosObs:'', delivery:'4 dias úteis', date:'2025-12-05', sdc:'SDC-2025-089' },
-    { id:'p8', desc:'LUVA DE CORRER 200mm, ESGOTO PEAD', un:'PC', supplier:'HydroConect Ltda', destUnit:'MININCO', qty:'12,00', unit:'41,00', total:'492,00', frete:'CIF', freteVal:'Incluso', impostos:'Com impostos', impostosObs:'ICMS 12%', delivery:'3 dias úteis', date:'2026-02-10', sdc:'SDC-2026-001' },
-  ];
-}
-
-function savePrices() {
-  try { sessionStorage.setItem('sc_prices', JSON.stringify(prices)); } catch(e) {}
-}
 
 function parseBR(val) {
   if (!val) return 0;
@@ -2418,7 +2721,7 @@ function calcPriceTotal() {
   if (unit && qty) document.getElementById('pmTotal').value = fmtBRL(unit * qty);
 }
 
-function savePrice() {
+async function savePrice() {
   const desc     = document.getElementById('pmDesc').value.trim();
   const supplier = document.getElementById('pmSupplier').value.trim();
   const unit     = document.getElementById('pmUnit').value.trim();
@@ -2426,36 +2729,39 @@ function savePrice() {
 
   const data = {
     desc, un: document.getElementById('pmUN').value.trim().toUpperCase(),
-    supplier,
-    destUnit:    document.getElementById('pmDestUnit').value,
-    qty:         document.getElementById('pmQty').value.trim(),
-    unit,
-    total:       document.getElementById('pmTotal').value.trim(),
-    frete:       document.getElementById('pmFrete').value,
-    freteVal:    document.getElementById('pmFreteVal').value.trim(),
-    impostos:    document.getElementById('pmImpostos').value,
+    supplier, destUnit: document.getElementById('pmDestUnit').value,
+    qty: document.getElementById('pmQty').value.trim(), unit,
+    total: document.getElementById('pmTotal').value.trim(),
+    frete: document.getElementById('pmFrete').value,
+    freteVal: document.getElementById('pmFreteVal').value.trim(),
+    impostos: document.getElementById('pmImpostos').value,
     impostosObs: document.getElementById('pmImpostosObs').value.trim(),
-    delivery:    document.getElementById('pmDelivery').value.trim(),
-    date:        document.getElementById('pmDate').value,
-    sdc:         document.getElementById('pmSDC').value.trim(),
+    delivery: document.getElementById('pmDelivery').value.trim(),
+    date: document.getElementById('pmDate').value,
+    sdc: document.getElementById('pmSDC').value.trim(),
   };
 
-  const editId = document.getElementById('priceEditId').value;
-  if (editId) {
-    const idx = prices.findIndex(p=>p.id===editId);
-    prices[idx] = { ...prices[idx], ...data };
-    showToast('Registro atualizado!');
-  } else {
-    prices.push({ id:'p'+Date.now(), ...data });
-    showToast('Preço registrado!');
-  }
-  savePrices(); closePriceModal(); renderPricesPage(); renderItemsWithPriceHints();
+  try {
+    setSyncStatus('loading');
+    const editId = document.getElementById('priceEditId').value;
+    await savePriceToDB(data, editId || null);
+    await loadPricesFromDB();
+    setSyncStatus('ok');
+    showToast(editId ? 'Registro atualizado!' : 'Preço registrado!');
+  } catch(e) { setSyncStatus('error'); showToast('Erro ao salvar: ' + e.message); return; }
+
+  closePriceModal(); renderPricesPage(); renderItemsWithPriceHints();
 }
 
-function deletePrice(id) {
+async function deletePrice(id) {
   if (!confirm('Remover este registro?')) return;
-  prices = prices.filter(p=>p.id!==id);
-  savePrices(); renderPricesPage(); renderItemsWithPriceHints();
+  try {
+    setSyncStatus('loading');
+    await deletePriceFromDB(id);
+    await loadPricesFromDB();
+    setSyncStatus('ok');
+  } catch(e) { setSyncStatus('error'); showToast('Erro: ' + e.message); return; }
+  renderPricesPage(); renderItemsWithPriceHints();
   showToast('Registro removido.');
 }
 
@@ -2524,12 +2830,15 @@ async function syncGSheets() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     const imported = parseCSVText(text);
-    const added = mergeImportedPrices(imported);
+    setSyncStatus('loading');
+    const added = await mergeImportedPrices(imported);
     gsheetsConfig.lastSync = new Date();
+    setSyncStatus('ok');
     updateGSheetsBtnState();
     showToast(`✓ ${added} novos registros importados!`);
     renderPricesPage(); renderItemsWithPriceHints();
   } catch(e) {
+    setSyncStatus('error');
     showToast('Erro ao conectar. Verifique o link e se a planilha está pública como CSV.');
   }
 }
@@ -2609,11 +2918,23 @@ function splitCSVLine(line, sep) {
   cells.push(cur); return cells;
 }
 
-function mergeImportedPrices(imported) {
+async function mergeImportedPrices(imported) {
   const existing = new Set(prices.map(p=>`${p.desc}|${p.supplier}|${p.date}`));
-  let added=0;
-  imported.forEach(p=>{ const k=`${p.desc}|${p.supplier}|${p.date}`; if(!existing.has(k)){prices.push(p);added++;} });
-  savePrices(); return added;
+  const newOnes = imported.filter(p => {
+    const k=`${p.desc}|${p.supplier}|${p.date}`; return !existing.has(k);
+  });
+  if (!newOnes.length) return 0;
+  const rows = newOnes.map(p => ({
+    item_desc:p.desc, un:p.un, supplier:p.supplier, dest_unit:p.destUnit,
+    qty:p.qty, unit_price:p.unit, total_price:p.total,
+    frete:p.frete, frete_val:p.freteVal, impostos:p.impostos,
+    impostos_obs:p.impostosObs, delivery:p.delivery,
+    proposal_date:p.date||null, sdc:p.sdc, created_by:state.user?.id
+  }));
+  const { error } = await sb.from('prices').insert(rows);
+  if (error) throw error;
+  await loadPricesFromDB();
+  return newOnes.length;
 }
 
 function exportPricesCSV() {
