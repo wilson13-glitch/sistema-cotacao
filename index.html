@@ -1298,6 +1298,41 @@ select option { background: #fff; }
   font-family: var(--mono); font-size: 10px; font-weight: 700;
   border-radius: 3px; padding: 1px 6px; letter-spacing: 0.3px;
 }
+/* Settings cards */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.margin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.margin-row:last-child { border-bottom: none; }
+
+.margin-tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text);
+}
+
+.margin-pct {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent2);
+}
+
+.margin-actions { display: flex; gap: 4px; }
+
 textarea { resize: vertical; min-height: 60px; }
 </style>
 </head>
@@ -1354,6 +1389,7 @@ textarea { resize: vertical; min-height: 60px; }
       <button class="nav-tab active" onclick="showPage('composer')">Composer</button>
       <button class="nav-tab" onclick="showPage('suppliers')">Fornecedores</button>
       <button class="nav-tab" onclick="showPage('prices')">Preços</button>
+      <button class="nav-tab" onclick="showPage('settings')">Configurações</button>
     </nav>
     <div class="user-chip" id="userChip" onclick="doLogout()">
       <span id="userChipLabel">...</span>
@@ -1372,14 +1408,18 @@ textarea { resize: vertical; min-height: 60px; }
     <!-- Empresa -->
     <div class="panel-section">
       <div class="section-label">Empresa</div>
-      <div class="company-toggle">
+      <div class="company-toggle" style="grid-template-columns:1fr 1fr 1fr;">
         <div class="company-opt active" id="co-mininco" onclick="selectCompany('mininco')">
           <div class="co-name">MININCO</div>
-          <div class="co-cnpj">61.748.475/0001-55</div>
+          <div class="co-cnpj">MG</div>
         </div>
         <div class="company-opt" id="co-hdpe" onclick="selectCompany('hdpe')">
           <div class="co-name">HDPE</div>
-          <div class="co-cnpj">64.155.399/0001-62</div>
+          <div class="co-cnpj">SP</div>
+        </div>
+        <div class="company-opt" id="co-midas" onclick="selectCompany('midas')">
+          <div class="co-name">MIDAS</div>
+          <div class="co-cnpj">Fábrica</div>
         </div>
       </div>
     </div>
@@ -1607,7 +1647,96 @@ textarea { resize: vertical; min-height: 60px; }
   </div>
 </div>
 
-<!-- ═══════════════ MODAL ═══════════════ -->
+<!-- ═══════════════ SETTINGS PAGE ═══════════════ -->
+<div id="page-settings" class="page">
+  <div class="suppliers-page">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div class="page-title">Configurações</div>
+        <p style="color:var(--muted);font-size:13px;margin-top:2px;">Margens por categoria, dados da MIDAS e estrutura para tributação futura.</p>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+
+      <!-- Margens por categoria -->
+      <div class="card" style="padding:20px;">
+        <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">Margens por Categoria (%)</div>
+        <div id="marginsGrid"></div>
+        <button class="add-btn" onclick="openMarginModal()" style="margin-top:8px;">+ Nova Categoria</button>
+      </div>
+
+      <!-- MIDAS config -->
+      <div class="card" style="padding:20px;">
+        <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;">Dados da MIDAS</div>
+        <div class="field">
+          <label>Nome Empresarial</label>
+          <input type="text" id="midasNome" placeholder="MIDAS REPRESENTAÇÕES LTDA" oninput="saveMidasConfig()">
+        </div>
+        <div class="field">
+          <label>CNPJ</label>
+          <input type="text" id="midasCnpj" placeholder="00.000.000/0001-00" oninput="saveMidasConfig()">
+        </div>
+        <div class="field">
+          <label>Endereço</label>
+          <input type="text" id="midasEndereco" placeholder="Rua, número, bairro" oninput="saveMidasConfig()">
+        </div>
+        <div class="input-row cols-2">
+          <div class="field">
+            <label>Cidade / UF</label>
+            <input type="text" id="midasCidade" placeholder="Cidade/UF" oninput="saveMidasConfig()">
+          </div>
+          <div class="field">
+            <label>CEP</label>
+            <input type="text" id="midasCep" placeholder="00000-000" oninput="saveMidasConfig()">
+          </div>
+        </div>
+        <div style="margin-top:8px;padding:8px 12px;background:#e8f4ee;border:1px solid #a8d4b8;border-radius:6px;font-size:11px;color:var(--accent2);">
+          Alterações salvas automaticamente
+        </div>
+      </div>
+
+      <!-- Estrutura futura - NCM -->
+      <div class="card" style="padding:20px;opacity:0.7;">
+        <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">NCM por Produto <span style="background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:9px;margin-left:4px;">FASE 2</span></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">Tabela de NCM com alíquotas de ICMS e ST por estado. Será usada pelo motor tributário para calcular o preço de venda automaticamente.</p>
+        <div style="margin-top:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);">
+          Estrutura já criada no banco — aguardando implementação do motor tributário.
+        </div>
+      </div>
+
+      <!-- Estrutura futura - Tributação -->
+      <div class="card" style="padding:20px;opacity:0.7;">
+        <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Motor Tributário <span style="background:var(--surface);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:9px;margin-left:4px;">FASE 2</span></div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">Cálculo automático de ICMS interestadual, DIFAL, ST e regras por regime tributário do cliente (Simples, LP/LR, PF, Produtor Rural).</p>
+        <div style="margin-top:10px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);">
+          Requer validação das alíquotas com contador antes de implementar.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MARGIN MODAL ═══════════════ -->
+<div class="modal-overlay" id="marginModalOverlay">
+  <div class="modal" style="width:380px;">
+    <div class="modal-title" id="marginModalTitle">Nova Categoria de Margem</div>
+    <input type="hidden" id="marginEditId">
+    <div class="field" style="margin-bottom:10px;">
+      <label>Nome da Categoria</label>
+      <input type="text" id="marginName" placeholder="Ex: PEAD, Metálico, Elétrico...">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Margem (%)</label>
+      <input type="number" id="marginPct" placeholder="Ex: 30" min="0" max="200" step="0.5">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeMarginModal()">Cancelar</button>
+      <button class="btn-save" onclick="saveMargin()">Salvar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-title" id="modalTitle">Novo Fornecedor</div>
@@ -1793,12 +1922,24 @@ textarea { resize: vertical; min-height: 60px; }
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <script>
+// Fallback se CDN falhar
+if (typeof supabase === 'undefined') {
+  document.getElementById('loginError').textContent = 'Erro ao carregar biblioteca. Verifique sua conexão e recarregue a página.';
+  document.getElementById('loginError').style.display = 'block';
+}
+
 // ── SUPABASE CONFIG ────────────────────────────────────────────────────────
 const SUPA_URL = 'https://lqkzztqdfchxljhqewak.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxxa3p6dHFkZmNoeGxqaHFld2FrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NTk4NTAsImV4cCI6MjA4OTUzNTg1MH0.cTS99Dun_p50ehpsnlGwVwlLtuP5p-WH8ekY5zWSj74';
-const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+let sb;
+try {
+  sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+} catch(e) {
+  console.error('Supabase init error:', e);
+}
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 let state = {
@@ -1818,12 +1959,21 @@ const COMPANIES = {
     cnpj: '61.748.475/0001-55', ie: '52498490060',
     endereco: 'Rua Antonio Marzinetti, 392, Ouro Preto',
     cidade: 'Belo Horizonte/MG', cep: '31.320-370',
+    uf: 'MG',
   },
   hdpe: {
     nome: 'HDPE BRAZIL', fantasia: 'HDPE do Brasil',
     cnpj: '64.155.399/0001-62', ie: '157253947119',
     endereco: 'Rua Agenor Domingues de Siqueira, 26, KM 18',
     cidade: 'Osasco/SP', cep: '06190-090',
+    uf: 'SP',
+  },
+  midas: {
+    nome: 'MIDAS REPRESENTAÇÕES LTDA', fantasia: 'MIDAS',
+    cnpj: '', ie: '',
+    endereco: '',
+    cidade: '', cep: '',
+    uf: '',
   }
 };
 
@@ -1841,11 +1991,19 @@ async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pw    = document.getElementById('loginPassword').value;
   const btn   = document.getElementById('loginBtn');
-  const err   = document.getElementById('loginError');
   if (!email || !pw) { showLoginError('Preencha e-mail e senha.'); return; }
   btn.disabled = true; btn.textContent = 'Entrando...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
-  if (error) { showLoginError(error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message); btn.disabled=false; btn.textContent='Entrar'; }
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if (error) {
+      showLoginError(error.message === 'Invalid login credentials'
+        ? 'E-mail ou senha incorretos.'
+        : error.message);
+    }
+  } catch(e) {
+    showLoginError('Erro de conexão. Verifique sua internet e tente novamente. (' + e.message + ')');
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
 }
 
 async function doRegister() {
@@ -1874,16 +2032,25 @@ function showLoginError(msg) {
   el.textContent = msg; el.style.display = msg ? 'block' : 'none';
 }
 
-function setSyncStatus(state) {
+function setSyncStatus(status) {
   const el = document.getElementById('syncStatus');
-  if (state === 'ok')      el.innerHTML = '<span class="sync-badge ok"><span class="sync-dot"></span>Sincronizado</span>';
-  else if (state === 'loading') el.innerHTML = '<span class="sync-badge loading"><span class="sync-dot pulse"></span>Carregando</span>';
-  else if (state === 'error')   el.innerHTML = '<span class="sync-badge error"><span class="sync-dot"></span>Erro de conexão</span>';
+  if (status === 'ok')           el.innerHTML = '<span class="sync-badge ok"><span class="sync-dot"></span>Sincronizado</span>';
+  else if (status === 'loading') el.innerHTML = '<span class="sync-badge loading"><span class="sync-dot pulse"></span>Carregando</span>';
+  else if (status === 'error')   el.innerHTML = '<span class="sync-badge error"><span class="sync-dot"></span>Erro de conexão</span>';
   else el.innerHTML = '';
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 window.onload = async () => {
+  // Teste de conexão rápido
+  try {
+    await sb.auth.getSession();
+  } catch(e) {
+    document.getElementById('loginError').style.display = 'block';
+    document.getElementById('loginError').textContent = 'Erro ao conectar ao servidor: ' + e.message;
+    return;
+  }
+
   // Listen for auth changes
   sb.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
@@ -1926,6 +2093,8 @@ async function initApp() {
   setSyncStatus('loading');
   await Promise.all([loadSuppliersFromDB(), loadPricesFromDB()]);
   setSyncStatus('ok');
+
+  initSettingsPage(); // Load margins + MIDAS config
 
   renderSupplierList();
   renderFilterBar();
@@ -1976,7 +2145,7 @@ async function deleteSupplierFromDB(id) {
 
 // ── DB: PRICES ─────────────────────────────────────────────────────────────
 async function loadPricesFromDB() {
-  const { data, error } = await sb.from('prices').select('*').order('proposal_date', { ascending: false });
+  const { data, error } = await sb.from('prices').select('*').order('created_at', { ascending: false });
   if (error) { setSyncStatus('error'); return; }
   prices = (data || []).map(r => ({
     id: r.id, desc: r.item_desc, un: r.un||'', supplier: r.supplier,
@@ -2015,6 +2184,148 @@ async function deletePriceFromDB(id) {
 function saveSuppliers() {}
 function savePrices() {}
 
+// ── MARGINS (localStorage — configuração local) ────────────────────────────
+let margins = loadMargins();
+
+function loadMargins() {
+  try { const m = localStorage.getItem('sc_margins'); if (m) return JSON.parse(m); } catch(e) {}
+  return [
+    { id: 'm1', name: 'PEAD', pct: 28 },
+    { id: 'm2', name: 'Metálico', pct: 35 },
+    { id: 'm3', name: 'Elétrico', pct: 32 },
+    { id: 'm4', name: 'Drenagem', pct: 30 },
+    { id: 'm5', name: 'Saneamento', pct: 28 },
+  ];
+}
+
+function saveMargins() {
+  try { localStorage.setItem('sc_margins', JSON.stringify(margins)); } catch(e) {}
+}
+
+function getMarginForItem(desc, tags) {
+  // Try to match by tag first, then by description keywords
+  if (tags && tags.length) {
+    for (const tag of tags) {
+      const m = margins.find(m => m.name.toLowerCase() === tag.toLowerCase());
+      if (m) return m;
+    }
+  }
+  // Keyword match on desc
+  const descLower = (desc||'').toLowerCase();
+  for (const m of margins) {
+    if (descLower.includes(m.name.toLowerCase())) return m;
+  }
+  return null;
+}
+
+function renderMarginsGrid() {
+  const grid = document.getElementById('marginsGrid');
+  if (!grid) return;
+  if (!margins.length) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 0;">Nenhuma categoria cadastrada.</div>';
+    return;
+  }
+  const sorted = [...margins].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR'));
+  grid.innerHTML = sorted.map(m => `
+    <div class="margin-row">
+      <span class="margin-tag">${esc(m.name)}</span>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="margin-pct">${m.pct}%</span>
+        <div class="margin-actions">
+          <button class="btn-sm" onclick="openMarginModal('${m.id}')">✏</button>
+          <button class="btn-sm danger" onclick="deleteMargin('${m.id}')">✕</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openMarginModal(id = null) {
+  document.getElementById('marginModalTitle').textContent = id ? 'Editar Margem' : 'Nova Categoria';
+  document.getElementById('marginEditId').value = id || '';
+  if (id) {
+    const m = margins.find(x => x.id === id);
+    document.getElementById('marginName').value = m.name;
+    document.getElementById('marginPct').value = m.pct;
+  } else {
+    document.getElementById('marginName').value = '';
+    document.getElementById('marginPct').value = '';
+  }
+  document.getElementById('marginModalOverlay').classList.add('open');
+}
+
+function closeMarginModal() {
+  document.getElementById('marginModalOverlay').classList.remove('open');
+}
+
+function saveMargin() {
+  const name = document.getElementById('marginName').value.trim();
+  const pct = parseFloat(document.getElementById('marginPct').value);
+  if (!name || isNaN(pct)) { showToast('Preencha nome e margem!'); return; }
+  const editId = document.getElementById('marginEditId').value;
+  if (editId) {
+    const idx = margins.findIndex(m => m.id === editId);
+    margins[idx] = { ...margins[idx], name, pct };
+  } else {
+    margins.push({ id: 'm' + Date.now(), name, pct });
+  }
+  saveMargins();
+  closeMarginModal();
+  renderMarginsGrid();
+  renderItemsWithPriceHints();
+  showToast(`Margem "${name}" salva!`);
+}
+
+function deleteMargin(id) {
+  const m = margins.find(x => x.id === id);
+  if (!confirm(`Remover margem "${m.name}"?`)) return;
+  margins = margins.filter(x => x.id !== id);
+  saveMargins();
+  renderMarginsGrid();
+  showToast('Margem removida.');
+}
+
+// ── MIDAS CONFIG (localStorage) ────────────────────────────────────────────
+function loadMidasConfig() {
+  try { const c = localStorage.getItem('sc_midas'); if (c) return JSON.parse(c); } catch(e) {}
+  return { nome: 'MIDAS REPRESENTAÇÕES LTDA', cnpj: '', endereco: '', cidade: '', cep: '' };
+}
+
+function saveMidasConfig() {
+  const cfg = {
+    nome:     document.getElementById('midasNome').value,
+    cnpj:     document.getElementById('midasCnpj').value,
+    endereco: document.getElementById('midasEndereco').value,
+    cidade:   document.getElementById('midasCidade').value,
+    cep:      document.getElementById('midasCep').value,
+  };
+  try { localStorage.setItem('sc_midas', JSON.stringify(cfg)); } catch(e) {}
+  // Update COMPANIES object live
+  COMPANIES.midas.nome     = cfg.nome || 'MIDAS REPRESENTAÇÕES LTDA';
+  COMPANIES.midas.fantasia = 'MIDAS';
+  COMPANIES.midas.cnpj     = cfg.cnpj;
+  COMPANIES.midas.endereco = cfg.endereco;
+  COMPANIES.midas.cidade   = cfg.cidade;
+  COMPANIES.midas.cep      = cfg.cep;
+  renderPreview();
+}
+
+function initSettingsPage() {
+  const cfg = loadMidasConfig();
+  document.getElementById('midasNome').value     = cfg.nome || '';
+  document.getElementById('midasCnpj').value     = cfg.cnpj || '';
+  document.getElementById('midasEndereco').value = cfg.endereco || '';
+  document.getElementById('midasCidade').value   = cfg.cidade || '';
+  document.getElementById('midasCep').value      = cfg.cep || '';
+  // Apply saved MIDAS config to COMPANIES
+  COMPANIES.midas.nome     = cfg.nome || 'MIDAS REPRESENTAÇÕES LTDA';
+  COMPANIES.midas.cnpj     = cfg.cnpj || '';
+  COMPANIES.midas.endereco = cfg.endereco || '';
+  COMPANIES.midas.cidade   = cfg.cidade || '';
+  COMPANIES.midas.cep      = cfg.cep || '';
+  renderMarginsGrid();
+}
+
 // ── PAGES ────────────────────────────────────────────────────────────────
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2023,6 +2334,7 @@ function showPage(page) {
   document.querySelector(`[onclick="showPage('${page}')"]`).classList.add('active');
   if (page === 'suppliers') renderSuppliersGrid();
   if (page === 'prices') renderPricesPage();
+  if (page === 'settings') initSettingsPage();
 }
 
 // ── COMPANY ──────────────────────────────────────────────────────────────
@@ -2765,7 +3077,7 @@ async function deletePrice(id) {
 }
 
 // ── PRICE HINTS IN COMPOSER ────────────────────────────────────────────────
-function getPriceHint(desc) {
+function getPricesByUnit(desc) {
   if (!desc || !prices.length) return null;
   const norm = desc.toLowerCase().trim();
   let matches = prices.filter(p => p.desc.toLowerCase().trim() === norm);
@@ -2773,18 +3085,68 @@ function getPriceHint(desc) {
     norm.length > 8 && (p.desc.toLowerCase().includes(norm.slice(0,10)) || norm.includes(p.desc.toLowerCase().slice(0,10)))
   );
   if (!matches.length) return null;
-  // Show best price
-  const best = matches.sort((a,b)=>parseBR(a.unit)-parseBR(b.unit))[0];
-  const last = [...matches].sort((a,b)=>b.date.localeCompare(a.date))[0];
-  return { best, last, count: matches.length };
+
+  // Best price per unit (MG=MININCO, SP=HDPE, MIDAS)
+  const byUnit = { MININCO: null, HDPE: null, MIDAS: null };
+  matches.forEach(p => {
+    const u = p.destUnit || '';
+    const v = parseBR(p.unit);
+    if (!v) return;
+    if (u === 'MININCO' && (!byUnit.MININCO || v < parseBR(byUnit.MININCO.unit))) byUnit.MININCO = p;
+    if (u === 'HDPE'    && (!byUnit.HDPE    || v < parseBR(byUnit.HDPE.unit)))    byUnit.HDPE = p;
+    if (u === 'MIDAS'   && (!byUnit.MIDAS   || v < parseBR(byUnit.MIDAS.unit)))   byUnit.MIDAS = p;
+    // If no unit specified, assign to all nulls
+    if (!u) {
+      if (!byUnit.MININCO) byUnit.MININCO = p;
+      if (!byUnit.HDPE)    byUnit.HDPE = p;
+    }
+  });
+
+  return byUnit;
+}
+
+function calcWithMargin(price, desc) {
+  const margin = getMarginForItem(desc, []);
+  if (!margin) return null;
+  const base = parseBR(price);
+  if (!base) return null;
+  const withMargin = base * (1 + margin.pct / 100);
+  return { base, pct: margin.pct, withMargin, category: margin.name };
 }
 
 function renderItemsWithPriceHints() {
   document.getElementById('itemsList').innerHTML = state.items.map((item) => {
-    const hint = getPriceHint(item.desc);
-    const hintHtml = hint
-      ? `<span class="price-hint" title="Melhor: R$ ${hint.best.unit} (${hint.best.supplier}, ${hint.best.frete||'?'}) · Último: R$ ${hint.last.unit} (${fmtDate(hint.last.date)})" onclick="showPage('prices')">${hint.best.unit}</span>`
-      : `<span style="font-family:var(--mono);font-size:10px;color:var(--border2);">—</span>`;
+    const byUnit = getPricesByUnit(item.desc);
+    let hintHtml = '';
+
+    if (byUnit) {
+      const parts = [];
+      if (byUnit.MININCO) {
+        const m = calcWithMargin(byUnit.MININCO.unit, item.desc);
+        const label = m ? `R$ ${fmtBRL(m.withMargin)}` : `R$ ${byUnit.MININCO.unit}`;
+        const title = m ? `MG: custo R$${byUnit.MININCO.unit} + ${m.pct}% (${m.category}) = R$${fmtBRL(m.withMargin)}` : `MG: R$${byUnit.MININCO.unit}`;
+        parts.push(`<span class="price-hint" style="background:#fff0eb;border-color:#f0b8a0;color:var(--accent);" title="${esc(title)}" onclick="showPage('prices')">MG ${label}</span>`);
+      }
+      if (byUnit.HDPE) {
+        const m = calcWithMargin(byUnit.HDPE.unit, item.desc);
+        const label = m ? `R$ ${fmtBRL(m.withMargin)}` : `R$ ${byUnit.HDPE.unit}`;
+        const title = m ? `SP: custo R$${byUnit.HDPE.unit} + ${m.pct}% (${m.category}) = R$${fmtBRL(m.withMargin)}` : `SP: R$${byUnit.HDPE.unit}`;
+        parts.push(`<span class="price-hint" style="background:#f0f0ff;border-color:#b0b0e0;color:#3a3a9a;" title="${esc(title)}" onclick="showPage('prices')">SP ${label}</span>`);
+      }
+      if (byUnit.MIDAS) {
+        const m = calcWithMargin(byUnit.MIDAS.unit, item.desc);
+        const label = m ? `R$ ${fmtBRL(m.withMargin)}` : `R$ ${byUnit.MIDAS.unit}`;
+        parts.push(`<span class="price-hint" style="background:#e8eef8;border-color:#a8b8d8;color:var(--blue);" title="MIDAS fábrica" onclick="showPage('prices')">MIDAS ${label}</span>`);
+      }
+      if (parts.length) {
+        hintHtml = `<div style="display:flex;flex-wrap:wrap;gap:3px;">${parts.join('')}</div>`;
+      }
+    }
+
+    if (!hintHtml) {
+      hintHtml = `<span style="font-family:var(--mono);font-size:10px;color:var(--border2);">—</span>`;
+    }
+
     return `
     <div class="item-row" style="grid-template-columns:1fr 48px 56px auto 22px;">
       <input type="text" value="${esc(item.desc)}" placeholder="Descrição..." oninput="updateItem(${item.id},'desc',this.value)" />
